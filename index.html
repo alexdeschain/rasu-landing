@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>РАСУ — Автоматизированные системы управления для атомной энергетики</title>
-  <meta name="description" content="РАСУ (Русатом АСУ) — разработчик автоматизированных систем управления технологическими процессами (АСУ ТП), систем РЗА и SCADA для АЭС и объектов большой энергетики. Проектирование, поставка, пусконаладка и сервис." />
+  <title>РАСУ — Автоматизированные системы управления для производства углеродного волокна</title>
+  <meta name="description" content="РАСУ — разработчик автоматизированных систем управления технологическими процессами (АСУ ТП) и SCADA для заводов по производству углеродного волокна (карбона) и непрерывных промышленных производств. Проектирование, поставка, пусконаладка и сервис." />
   <meta name="theme-color" content="#1a2942" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="РАСУ — Системы управления для атомной энергетики" />
-  <meta property="og:description" content="АСУ ТП, РЗА и SCADA для АЭС и большой энергетики. Полный жизненный цикл: проектирование, поставка, пусконаладка, сервис." />
+  <meta property="og:title" content="РАСУ — Системы управления для производства углеродного волокна" />
+  <meta property="og:description" content="АСУ ТП и SCADA для заводов углеродного волокна (карбона). Полный жизненный цикл: проектирование, поставка, пусконаладка, сервис." />
   <meta property="og:image" content="assets/img/004.jpg" />
 
   <!-- Favicon -->
@@ -64,47 +64,54 @@
   </header>
 
   <main>
-    <!-- ============ HERO ============ -->
+    <!-- ============ HERO (scroll-pinned disassembly) ============
+         The <section> is a tall "track". The .hero__sticky child is
+         pinned (position: sticky) to the viewport while the track scrolls
+         past, and the scroll progress within the track drives the 3D
+         workshop disassembly (main.js -> scene.js). Once progress hits 1
+         the sticky releases and the page scrolls on to #about. -->
     <section class="hero" id="hero">
-      <!-- 3D scene mounts here; fallback image inside -->
-      <div class="hero__scene" id="scene-container" aria-hidden="true">
-        <noscript>
-          <img src="assets/img/004.jpg" alt="Электрическая подстанция" class="hero__fallback-img" />
-        </noscript>
-      </div>
+      <div class="hero__sticky">
+        <!-- 3D scene mounts here; fallback image inside -->
+        <div class="hero__scene" id="scene-container" aria-hidden="true">
+          <noscript>
+            <img src="assets/img/001.jpg" alt="Зал АСУ ТП завода по производству волокна" class="hero__fallback-img" />
+          </noscript>
+        </div>
 
-      <!-- Peek hint: tells the user the scene is interactive -->
-      <button type="button" class="hero__peek" id="scene-hint" aria-label="Заглянуть внутрь подстанции">
-        <span class="hero__peek-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </span>
-        <span class="hero__peek-text">Наведите, чтобы заглянуть внутрь</span>
-      </button>
+        <!-- Peek hint: tells the user the scene is interactive -->
+        <button type="button" class="hero__peek" id="scene-hint" aria-label="Заглянуть внутрь цеха">
+          <span class="hero__peek-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </span>
+          <span class="hero__peek-text">Листайте, чтобы заглянуть внутрь</span>
+        </button>
 
-      <div class="container hero__inner">
-        <div class="hero__content">
-          <p class="hero__eyebrow reveal">Русатом Автоматизированные системы управления</p>
-          <h1 class="hero__title reveal">
-            Автоматизированные системы управления для&nbsp;<span class="accent-text">атомной</span> и большой энергетики
-          </h1>
-          <p class="hero__subtitle reveal">
-            Проектируем, поставляем и вводим в эксплуатацию АСУ ТП, системы релейной защиты
-            и SCADA для энергоблоков АЭС и критических объектов энергетики — с гарантией
-            надёжности на весь жизненный цикл.
-          </p>
-          <div class="hero__actions reveal">
-            <a href="#solutions" class="btn btn--accent btn--lg">Узнать больше</a>
-            <a href="#contacts" class="btn btn--ghost btn--lg">Связаться</a>
+        <div class="container hero__inner">
+          <div class="hero__content">
+            <p class="hero__eyebrow reveal">Русатом Автоматизированные системы управления</p>
+            <h1 class="hero__title reveal">
+              Автоматизированные системы управления для&nbsp;<span class="accent-text">производства</span> волокна
+            </h1>
+            <p class="hero__subtitle reveal">
+              Проектируем, поставляем и вводим в эксплуатацию АСУ ТП и SCADA для
+              заводов по производству волокна и непрерывных промышленных
+              производств — с гарантией надёжности на весь жизненный цикл.
+            </p>
+            <div class="hero__actions reveal">
+              <a href="#solutions" class="btn btn--accent btn--lg">Узнать больше</a>
+              <a href="#contacts" class="btn btn--ghost btn--lg">Связаться</a>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="hero__hint" id="scroll-hint" aria-hidden="true">
-        <span class="hero__hint-text">Листайте вниз</span>
-        <span class="hero__hint-mouse"><span class="hero__hint-wheel"></span></span>
+        <div class="hero__hint" id="scroll-hint" aria-hidden="true">
+          <span class="hero__hint-text">Листайте — цех раскрывается</span>
+          <span class="hero__hint-mouse"><span class="hero__hint-wheel"></span></span>
+        </div>
       </div>
     </section>
 
@@ -112,27 +119,27 @@
     <section class="section about" id="about">
       <div class="container about__grid">
         <div class="about__media reveal">
-          <img src="assets/img/001.jpg" alt="Блочный пункт управления энергообъекта" class="about__img" loading="lazy" />
-          <img src="assets/img/008.png" alt="Эмблема атомной отрасли" class="about__emblem" loading="lazy" />
+          <img src="assets/img/001.jpg" alt="Операторская станция управления производственной линией" class="about__img" loading="lazy" />
+          <img src="assets/img/008.png" alt="Эмблема отрасли" class="about__emblem" loading="lazy" />
         </div>
         <div class="about__content">
           <p class="section__eyebrow reveal">О компании</p>
-          <h2 class="section__title reveal">Инженерная основа надёжной энергетики</h2>
+          <h2 class="section__title reveal">Цифровая основа непрерывного производства</h2>
           <p class="about__lead reveal">
-            РАСУ — отраслевой интегратор Госкорпорации «Росатом» в области автоматизированных
-            систем управления технологическими процессами. Мы создаём цифровую нервную систему
-            энергоблоков: от датчика на технологическом оборудовании до операторской станции
-            блочного пункта управления.
+            РАСУ — инженерная компания в области автоматизированных систем управления
+            технологическими процессами. Мы создаём цифровую нервную систему завода
+            углеродного волокна: от датчика на технологической линии до операторской
+            станции центрального пункта управления.
           </p>
           <p class="about__text reveal">
-            Наши решения соответствуют требованиям ядерной и промышленной безопасности,
-            нормативам МАГАТЭ и российским стандартам. Мы сопровождаем проект на всех этапах —
-            от концепции и проектирования до пусконаладки и сервисной поддержки в течение
-            десятилетий эксплуатации.
+            Производство карбона — это непрерывный процесс, где важна каждая секунда:
+            точный контроль натяжения нити, температуры в печах окисления и карбонизации,
+            скорости намотки на бобины. Мы сопровождаем проект на всех этапах — от концепции
+            и проектирования до пусконаладки и сервисной поддержки на годы эксплуатации.
           </p>
           <ul class="about__points">
             <li class="reveal"><span class="about__point-mark"></span>Полный жизненный цикл АСУ ТП — проект, поставка, ПНР, сервис</li>
-            <li class="reveal"><span class="about__point-mark"></span>Соответствие нормам ядерной безопасности и стандартам МАГАТЭ</li>
+            <li class="reveal"><span class="about__point-mark"></span>Управление непрерывной технологической линией в реальном времени</li>
             <li class="reveal"><span class="about__point-mark"></span>Импортонезависимая аппаратно-программная платформа</li>
           </ul>
         </div>
@@ -144,10 +151,10 @@
       <div class="container">
         <div class="section__head">
           <p class="section__eyebrow reveal">Решения и услуги</p>
-          <h2 class="section__title reveal">Комплексные решения для энергообъектов</h2>
+          <h2 class="section__title reveal">Комплексная автоматизация производства</h2>
           <p class="section__desc reveal">
-            Закрываем все задачи автоматизации энергоблока — от полевого уровня до
-            верхнего уровня управления и эксплуатационного сервиса.
+            Закрываем все задачи автоматизации технологической линии — от полевого уровня
+            до верхнего уровня управления и эксплуатационного сервиса.
           </p>
         </div>
 
@@ -157,16 +164,16 @@
             <h3 class="card__title">АСУ ТП</h3>
             <p class="card__text">
               Проектирование и внедрение автоматизированных систем управления
-              технологическими процессами энергоблоков — нижний, средний и верхний уровни.
+              технологическими процессами производства — нижний, средний и верхний уровни.
             </p>
           </article>
 
           <article class="card reveal">
             <div class="card__icon"><img src="assets/img/017.svg" alt="" aria-hidden="true" /></div>
-            <h3 class="card__title">Релейная защита и автоматика</h3>
+            <h3 class="card__title">Контроль технологической линии</h3>
             <p class="card__text">
-              Системы РЗА для электротехнического оборудования подстанций и распределительных
-              устройств: быстрое и селективное отключение аварийных режимов.
+              Управление непрерывным процессом: регулирование натяжения нити, температуры
+              в печах окисления и карбонизации, скорости протяжки и намотки на бобины.
             </p>
           </article>
 
@@ -184,7 +191,7 @@
             <h3 class="card__title">Проектирование</h3>
             <p class="card__text">
               Полный цикл проектных работ: концепция, рабочая документация, моделирование
-              и обоснование решений по автоматизации и электротехнике.
+              и обоснование решений по автоматизации технологической линии.
             </p>
           </article>
 
@@ -193,16 +200,16 @@
             <h3 class="card__title">Пусконаладка</h3>
             <p class="card__text">
               Монтажный надзор, наладка оборудования и комплексные испытания систем
-              управления с выводом энергоблока на проектные параметры.
+              управления с выводом производства на проектные параметры.
             </p>
           </article>
 
           <article class="card reveal">
             <div class="card__icon"><img src="assets/img/013.svg" alt="" aria-hidden="true" /></div>
-            <h3 class="card__title">Сервис и поддержка</h3>
+            <h3 class="card__title">Прослеживаемость и качество</h3>
             <p class="card__text">
-              Сопровождение жизненного цикла: техническая поддержка, модернизация,
-              поставка ЗИП и обучение эксплуатационного персонала.
+              Контроль качества по всей линии, прослеживаемость партий и параметров,
+              сбор производственной статистики и интеграция с системами предприятия (MES/ERP).
             </p>
           </article>
         </div>
@@ -216,13 +223,13 @@
           <p class="section__eyebrow section__eyebrow--light reveal">Платформа</p>
           <h2 class="section__title section__title--light reveal">RASU-10 — программно-технический комплекс</h2>
           <p class="product__lead reveal">
-            RASU-10 — отечественная платформа для построения АСУ ТП объектов атомной
-            и тепловой энергетики. Единая аппаратно-программная экосистема: контроллеры,
+            RASU-10 — отечественная платформа для построения АСУ ТП непрерывных
+            промышленных производств. Единая аппаратно-программная экосистема: контроллеры,
             модули ввода-вывода, серверы и инструменты разработки прикладного ПО.
           </p>
           <ul class="product__features">
-            <li class="reveal"><strong>Надёжность класса безопасности</strong> — резервирование и диагностика на всех уровнях</li>
-            <li class="reveal"><strong>Масштабируемость</strong> — от отдельной системы до полной АСУ ТП энергоблока</li>
+            <li class="reveal"><strong>Промышленная надёжность</strong> — резервирование и диагностика на всех уровнях</li>
+            <li class="reveal"><strong>Масштабируемость</strong> — от отдельного участка до АСУ ТП всего завода</li>
             <li class="reveal"><strong>Кибербезопасность</strong> — встроенная защита и соответствие требованиям КИИ</li>
             <li class="reveal"><strong>Открытые протоколы</strong> — интеграция с системами заказчика и сторонним оборудованием</li>
           </ul>
@@ -246,16 +253,16 @@
         </div>
         <div class="stats">
           <div class="stat reveal">
-            <div class="stat__num" data-count="25" data-suffix="+">0</div>
-            <div class="stat__label">лет в атомной энергетике</div>
+            <div class="stat__num" data-count="15" data-suffix="+">0</div>
+            <div class="stat__label">лет в промышленной автоматизации</div>
           </div>
           <div class="stat reveal">
             <div class="stat__num" data-count="120" data-suffix="+">0</div>
             <div class="stat__label">реализованных проектов</div>
           </div>
           <div class="stat reveal">
-            <div class="stat__num" data-count="30" data-suffix="">0</div>
-            <div class="stat__label">энергоблоков под управлением</div>
+            <div class="stat__num" data-count="24" data-suffix="/7">0</div>
+            <div class="stat__label">непрерывная работа линий</div>
           </div>
           <div class="stat reveal">
             <div class="stat__num" data-count="99" data-suffix="%">0</div>
@@ -269,21 +276,21 @@
     <section class="section gallery" id="gallery">
       <div class="container">
         <div class="section__head">
-          <p class="section__eyebrow reveal">Объекты</p>
-          <h2 class="section__title reveal">Энергетика в деталях</h2>
+          <p class="section__eyebrow reveal">Производство</p>
+          <h2 class="section__title reveal">Автоматизация в деталях</h2>
         </div>
         <div class="gallery__grid">
           <figure class="gallery__item gallery__item--wide reveal">
-            <img src="assets/img/004.jpg" alt="Силовые трансформаторы и оборудование подстанции" loading="lazy" />
-            <figcaption>Открытое распределительное устройство</figcaption>
+            <img src="assets/img/004.jpg" alt="Технологическое оборудование производственной линии" loading="lazy" />
+            <figcaption>Технологическое оборудование линии</figcaption>
           </figure>
           <figure class="gallery__item reveal">
-            <img src="assets/img/001.jpg" alt="Блочный пункт управления" loading="lazy" />
-            <figcaption>Блочный пункт управления</figcaption>
+            <img src="assets/img/001.jpg" alt="Операторская станция управления" loading="lazy" />
+            <figcaption>Центральный пункт управления</figcaption>
           </figure>
           <figure class="gallery__item gallery__item--tall reveal">
-            <img src="assets/img/banner.jpg" alt="Энергообъект в ночное время" loading="lazy" />
-            <figcaption>Непрерывность управления 24/7</figcaption>
+            <img src="assets/img/banner.jpg" alt="Производство в круглосуточном режиме" loading="lazy" />
+            <figcaption>Непрерывное производство 24/7</figcaption>
           </figure>
         </div>
       </div>

@@ -1,14 +1,21 @@
 /* ============================================================
    РАСУ — 3D hero scene
-   Stylised low-poly electrical substation. As `open` grows 0→1
-   the roof lifts off and fades, the walls turn translucent, an
-   interior teal "power-on" glow ramps up, and the CAMERA leans
-   in and tilts down to look right inside at the transformers.
+   Stylised low-poly FIBRE-PRODUCTION PLANT whose control hall is
+   filled with РАСУ's product: rows of АСУ ТП / industrial control
+   cabinets and operator consoles.
+
+   As `open` grows 0→1 the workshop is DISASSEMBLED:
+     • the roof lifts off and fades,
+     • the walls turn translucent (the front wall fades the most),
+     • an interior teal "power-on" glow ramps up and the cabinet
+       LEDs light up,
+     • the CAMERA leans in and tilts down to look right inside at
+       the rows of control cabinets.
 
    Drive sources (max wins):
-     • scroll progress  (main.js → setScrollProgress)
+     • scroll progress  (main.js → setScrollProgress) — primary driver
      • hover / click on the canvas
-     • idle auto-demo    (slow open/close until the user interacts)
+     • idle auto-demo    (a gentle teaser ONLY before the first scroll)
 
    Three.js r160 via CDN import map. No bundler.
    ============================================================ */
@@ -30,59 +37,74 @@ function webglAvailable() {
 }
 
 function showFallback(container) {
-  // Static substation photo instead of the canvas.
+  // Static photo instead of the live canvas.
   container.classList.add('is-fallback');
   // The peek hint is meaningless without the live scene.
   const hint = document.getElementById('scene-hint');
   if (hint) hint.style.display = 'none';
+  // Let the page know there is no scroll-driven disassembly, so the
+  // pin track can collapse and scrolling stays normal.
+  document.documentElement.classList.add('no-scene');
 }
 
 /* ---------- Palette (matches site brand) ---------- */
 const COLORS = {
-  building:    0x55687e,
+  building:     0x5a6e84,
   buildingDark: 0x3a4a5c,
-  roof:        0x61748a,
-  base:        0x2a3a4d,
-  ground:      0x1f2d40,
-  metal:       0xaab6c6,   // lighter so equipment pops
-  metalDark:   0x7a8a9c,
-  transformer: 0xb4c0d0,   // light steel — stands out inside
-  tank:        0x9aa8b8,
-  insulator:   0xe6ecf2,
-  copper:      0x39b59a,
-  accent:      0x30ba9a,
-  wire:        0x2a3a4e
+  rib:          0x47596d,
+  roof:         0x61748a,
+  glass:        0x9fc4d6,
+  base:         0x2a3a4d,
+  ground:       0x1f2d40,
+
+  cabinet:      0xc2ccd8,   // light steel — cabinets must read clearly
+  cabinetDark:  0x9aa6b4,   // side / shading
+  cabinetFace:  0x39424e,   // dark front panel so LEDs pop
+  consoleBody:  0xb4c0d0,
+  vent:         0x6c7a8a,
+
+  floor:        0x222f3f,
+  tray:         0x8893a2,
+  spool:        0x86909e,
+
+  ledTeal:      0x30ba9a,
+  ledAmber:     0xf0a23a,
+  ledGreen:     0x46c46a,
+  screen:       0x30ba9a,
+  accent:       0x30ba9a
 };
 
 /* ---------- Module state ---------- */
-let scrollProgress = 0;     // 0..1 from main.js (scroll over hero)
+let scrollProgress = 0;     // 0..1 from main.js (scroll over the pinned hero)
 let hoverProgress = 0;      // 0..1 toggled by hover
 let clickProgress = 0;      // 0..1 toggled by click
-let autoProgress = 0;       // 0..1 idle auto-demo
+let autoProgress = 0;       // 0..1 idle teaser (before first scroll only)
 let openCurrent = 0;        // lerped actual open amount (drives everything)
 
 let renderer, scene, camera, controls, clock;
 let roof, building, equipment, interiorLight, sceneHint;
 let wallMaterials = [];
-let glowMeshes = [];        // meshes whose emissive ramps with open
+let glowMeshes = [];        // emissive materials whose intensity ramps with open
+let ledGroups = [];         // { mat, base, peak, phase, speed } — blinking LEDs
 
 let pointer = new THREE.Vector2();
 let mouseParallax = new THREE.Vector2();
 let reducedMotion = false;
 let isMobile = false;
 let userInteracted = false; // any hover/click/drag/scroll stops the auto-demo
+let scrollDriven = false;   // true once the page scroll has taken over
 let autoStartTime = 0;
 let azimuth = 0;            // current orbit azimuth (auto-rotate + drag)
 let dragAzimuth = 0;        // extra azimuth from user drag
 
 /* ---------- Camera keyframes (interpolated by openCurrent) ----------
-   Spherical orbit around an animated target. Closed = wide, premium
-   establishing shot biased to the right (clear of the text gradient).
-   Open  = closer, steeper top-down angle, target dropped INTO the box
-   so we look straight inside at the transformers.                     */
+   Spherical orbit around an animated target. Closed = wide premium
+   establishing shot of the workshop, biased right (clear of the text).
+   Open  = closer, steeper top-down angle, target dropped INTO the hall
+   so we look straight down the rows of control cabinets.              */
 const CAM = {
-  closed: { radius: 15.0, polar: 1.16, targetY: 1.9, fov: 40 },
-  open:   { radius: 8.7,  polar: 0.70, targetY: 1.15, fov: 47 }
+  closed: { radius: 17.5, polar: 1.14, targetY: 2.0, fov: 41 },
+  open:   { radius: 10.5, polar: 0.66, targetY: 1.05, fov: 49 }
 };
 const ORBIT_TARGET_X = 0;
 
@@ -90,161 +112,194 @@ const ORBIT_TARGET_X = 0;
    Geometry builders
    ============================================================ */
 
-/** Cooling-fin radiator bank attached to a transformer side. */
-function buildRadiator(material, fins) {
+/** A grid of small emissive LED dots on a flat panel (front of a cabinet).
+ *  Returns a Group positioned at local origin; caller places it.
+ *  Each cabinet gets its own emissive material so it can blink
+ *  independently and ramp with the global "power on". */
+function buildLedPanel(width, height, cols, rows) {
   const group = new THREE.Group();
-  const finGeo = new THREE.BoxGeometry(0.05, 1.15, 0.62);
-  const n = fins || 7;
-  for (let i = 0; i < n; i++) {
-    const fin = new THREE.Mesh(finGeo, material);
-    fin.position.x = i * 0.13;
-    fin.castShadow = true;
-    group.add(fin);
+  // Mostly teal, with a sprinkle of amber/green for a "live system" feel.
+  const palette = [COLORS.ledTeal, COLORS.ledTeal, COLORS.ledTeal, COLORS.ledTeal,
+                   COLORS.ledGreen, COLORS.ledAmber];
+  const ledGeo = new THREE.PlaneGeometry(0.045, 0.045);
+  const marginX = width * 0.16;
+  const marginY = height * 0.14;
+  const stepX = (width - marginX * 2) / Math.max(1, cols - 1);
+  const stepY = (height - marginY * 2) / Math.max(1, rows - 1);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const color = palette[(r * cols + c) % palette.length];
+      const mat = new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 0.0,
+        metalness: 0.0, roughness: 0.5
+      });
+      // Register for global power-on ramp + individual flicker.
+      ledGroups.push({
+        mat,
+        base: 0.0,
+        peak: 1.7 + Math.random() * 1.1,
+        phase: Math.random() * Math.PI * 2,
+        speed: 1.4 + Math.random() * 2.6
+      });
+      const led = new THREE.Mesh(ledGeo, mat);
+      led.position.set(-width / 2 + marginX + c * stepX,
+                       -height / 2 + marginY + r * stepY,
+                       0);
+      group.add(led);
+    }
   }
-  // top + bottom header pipes that tie the fins together
-  const headerGeo = new THREE.BoxGeometry(n * 0.13, 0.08, 0.16);
-  const top = new THREE.Mesh(headerGeo, material); top.position.set((n - 1) * 0.065, 0.5, 0.0); group.add(top);
-  const bot = new THREE.Mesh(headerGeo, material); bot.position.set((n - 1) * 0.065, -0.5, 0.0); group.add(bot);
   return group;
 }
 
-/** A single power transformer: tank + conservator + bushings + radiators.
- *  Built larger and more detailed so it reads clearly from above. */
-function buildTransformer() {
+/** One industrial control cabinet / 19" server rack.
+ *  Light steel body, dark recessed front panel with an LED grid and a
+ *  few ventilation slits. `tall`/`wide` tweak the silhouette so the
+ *  rows don't look uniform.                                           */
+function buildCabinet(opts) {
+  const o = opts || {};
+  const w = o.w || 0.9;
+  const h = o.h || 2.1;
+  const d = o.d || 0.85;
   const group = new THREE.Group();
-  const bodyMat = new THREE.MeshStandardMaterial({ color: COLORS.transformer, metalness: 0.6, roughness: 0.38 });
-  const tankMat = new THREE.MeshStandardMaterial({ color: COLORS.tank, metalness: 0.55, roughness: 0.42 });
-  const finMat  = new THREE.MeshStandardMaterial({ color: COLORS.metalDark, metalness: 0.65, roughness: 0.4 });
-  const insMat  = new THREE.MeshStandardMaterial({ color: COLORS.insulator, metalness: 0.08, roughness: 0.65 });
-  // Bushing caps get a faint teal emissive that ramps with "power on".
-  const capMat  = new THREE.MeshStandardMaterial({ color: COLORS.accent, metalness: 0.4, roughness: 0.45, emissive: 0x30ba9a, emissiveIntensity: 0.0 });
-  glowMeshes.push({ mat: capMat, base: 0.0, peak: 0.9 });
 
-  // Main body (tank)
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.55, 1.4), bodyMat);
-  body.position.y = 0.78;
+  const bodyMat = new THREE.MeshStandardMaterial({ color: COLORS.cabinet, metalness: 0.55, roughness: 0.45 });
+  const sideMat = new THREE.MeshStandardMaterial({ color: COLORS.cabinetDark, metalness: 0.55, roughness: 0.5 });
+  const faceMat = new THREE.MeshStandardMaterial({ color: COLORS.cabinetFace, metalness: 0.4, roughness: 0.55 });
+  const ventMat = new THREE.MeshStandardMaterial({ color: COLORS.vent, metalness: 0.5, roughness: 0.6 });
+
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bodyMat);
+  body.position.y = h / 2;
   body.castShadow = true; body.receiveShadow = true;
   group.add(body);
 
-  // Lid plate
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.12, 1.48), finMat);
-  lid.position.y = 1.58;
-  lid.castShadow = true;
-  group.add(lid);
-
-  // Conservator tank (horizontal cylinder offset to the back)
-  const cons = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 1.5, 18), tankMat);
-  cons.rotation.z = Math.PI / 2;
-  cons.position.set(0, 1.92, -0.55);
-  cons.castShadow = true;
-  group.add(cons);
-  // saddle supports for the conservator
-  [-0.55, 0.55].forEach((x) => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.34, 0.1), finMat);
-    leg.position.set(x, 1.74, -0.55);
-    group.add(leg);
+  // Side panels (slightly darker) to give the rack some depth
+  [-1, 1].forEach((s) => {
+    const sp = new THREE.Mesh(new THREE.BoxGeometry(0.04, h * 0.98, d * 0.98), sideMat);
+    sp.position.set(s * (w / 2 - 0.01), h / 2, 0);
+    group.add(sp);
   });
 
-  // HV bushings / insulators on top (cone stack + cap), well-defined
-  const bushPositions = [-0.5, 0, 0.5];
-  bushPositions.forEach((x) => {
-    // tapered porcelain stack
-    const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.17, 0.85, 16), insMat);
-    stack.position.set(x, 2.06, 0.32);
-    stack.castShadow = true;
-    group.add(stack);
-    // sheds (two discs) for a real-insulator silhouette
-    [0.0, 0.28].forEach((dy) => {
-      const shed = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16), insMat);
-      shed.position.set(x, 1.95 + dy, 0.32);
-      group.add(shed);
-    });
-    // glowing terminal cap
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.12, 14), capMat);
-    cap.position.set(x, 2.54, 0.32);
-    cap.castShadow = true;
-    group.add(cap);
-  });
+  // Top cap
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.07, d + 0.04), sideMat);
+  cap.position.y = h + 0.02;
+  cap.castShadow = true;
+  group.add(cap);
 
-  // Radiators on both sides (taller, ribbed)
-  const radL = buildRadiator(finMat, 7);
-  radL.position.set(-1.32, 0.62, -0.1);
-  group.add(radL);
-  const radR = buildRadiator(finMat, 7);
-  radR.position.set(0.95, 0.62, -0.1);
-  group.add(radR);
+  // Plinth
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), sideMat);
+  plinth.position.y = 0.06;
+  group.add(plinth);
 
-  return group;
-}
+  // Recessed dark front panel (faces +Z)
+  const panelH = h * 0.86;
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(w * 0.82, panelH, 0.04), faceMat);
+  panel.position.set(0, h / 2 + 0.05, d / 2 + 0.005);
+  group.add(panel);
 
-/** Lattice support pylon made of thin boxes. */
-function buildPylon(height) {
-  const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: COLORS.metalDark, metalness: 0.6, roughness: 0.4 });
-  const legGeo = new THREE.BoxGeometry(0.07, height, 0.07);
-  const w = 0.45;
-  const offsets = [[-w, -w], [w, -w], [-w, w], [w, w]];
-  offsets.forEach(([x, z]) => {
-    const leg = new THREE.Mesh(legGeo, mat);
-    leg.position.set(x, height / 2, z);
-    leg.castShadow = true;
-    leg.rotation.x = (z > 0 ? -1 : 1) * 0.04;
-    leg.rotation.z = (x > 0 ? 1 : -1) * 0.04;
-    group.add(leg);
-  });
-  const braceGeo = new THREE.BoxGeometry(2 * w + 0.1, 0.05, 0.05);
-  for (let i = 1; i <= 4; i++) {
-    const y = (height / 5) * i;
-    const b1 = new THREE.Mesh(braceGeo, mat); b1.position.set(0, y, -w); group.add(b1);
-    const b2 = new THREE.Mesh(braceGeo, mat); b2.position.set(0, y, w); group.add(b2);
-    const b3 = new THREE.Mesh(braceGeo, mat); b3.rotation.y = Math.PI / 2; b3.position.set(-w, y, 0); group.add(b3);
-    const b4 = new THREE.Mesh(braceGeo, mat); b4.rotation.y = Math.PI / 2; b4.position.set(w, y, 0); group.add(b4);
-  }
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 0.08), mat);
-  arm.position.y = height - 0.2;
-  arm.castShadow = true;
-  group.add(arm);
-  return group;
-}
-
-/** Catenary (sagging) wire between two points using a Tube. */
-function buildCatenary(from, to, sag, mat) {
-  const mid = from.clone().add(to).multiplyScalar(0.5);
-  mid.y -= sag;
-  const curve = new THREE.CatmullRomCurve3([from, mid, to]);
-  const geo = new THREE.TubeGeometry(curve, 24, 0.02, 6, false);
-  return new THREE.Mesh(geo, mat);
-}
-
-/** Small post insulator stack. */
-function buildInsulatorPost(x, z, mat) {
-  const group = new THREE.Group();
+  // Ventilation slits near the top of the panel
   for (let i = 0; i < 3; i++) {
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.11, 14), mat);
-    disc.position.y = 0.2 + i * 0.2;
-    disc.castShadow = true;
-    group.add(disc);
+    const slit = new THREE.Mesh(new THREE.BoxGeometry(w * 0.6, 0.025, 0.02), ventMat);
+    slit.position.set(0, h * 0.86 - i * 0.06, d / 2 + 0.03);
+    group.add(slit);
   }
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.62, 8), mat);
-  rod.position.y = 0.4;
-  group.add(rod);
-  group.position.set(x, 0, z);
+
+  // LED grid on the panel
+  const leds = buildLedPanel(w * 0.66, panelH * 0.6, o.cols || 4, o.rows || 5);
+  leds.position.set(0, h / 2 + 0.02, d / 2 + 0.03);
+  group.add(leds);
+
+  return group;
+}
+
+/** Operator console / control desk: a cabinet base with a slanted,
+ *  glowing screen on top (teal). Reads as the human-machine interface
+ *  of the АСУ ТП.                                                      */
+function buildConsole() {
+  const group = new THREE.Group();
+  const baseMat = new THREE.MeshStandardMaterial({ color: COLORS.consoleBody, metalness: 0.5, roughness: 0.45 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: COLORS.cabinetDark, metalness: 0.5, roughness: 0.5 });
+  const screenMat = new THREE.MeshStandardMaterial({
+    color: COLORS.screen, emissive: COLORS.screen, emissiveIntensity: 0.0,
+    metalness: 0.1, roughness: 0.35
+  });
+  glowMeshes.push({ mat: screenMat, base: 0.05, peak: 1.5 });
+
+  // Desk body
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.0, 1.0), baseMat);
+  desk.position.y = 0.5;
+  desk.castShadow = true; desk.receiveShadow = true;
+  group.add(desk);
+
+  // Slanted screen frame
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.9, 0.08), frameMat);
+  frame.position.set(0, 1.42, -0.18);
+  frame.rotation.x = -0.42;
+  frame.castShadow = true;
+  group.add(frame);
+
+  // Glowing screen face (slightly in front of the frame)
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.74), screenMat);
+  screen.position.set(0, 1.43, -0.13);
+  screen.rotation.x = -0.42;
+  group.add(screen);
+
+  // A row of mimic LEDs along the desk lip
+  const lip = buildLedPanel(1.3, 0.12, 8, 1);
+  lip.position.set(0, 0.96, 0.5);
+  lip.rotation.x = -0.25;
+  group.add(lip);
+
+  return group;
+}
+
+/** A horizontal cable tray (thin perforated-looking box) spanning the
+ *  hall above an aisle. */
+function buildCableTray(length) {
+  const mat = new THREE.MeshStandardMaterial({ color: COLORS.tray, metalness: 0.55, roughness: 0.5 });
+  const group = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(length, 0.05, 0.28), mat);
+  group.add(base);
+  // side rails
+  [-0.14, 0.14].forEach((z) => {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(length, 0.09, 0.03), mat);
+    rail.position.set(0, 0.02, z);
+    group.add(rail);
+  });
+  return group;
+}
+
+/** A fibre spool: a cylinder with two flange discs on a horizontal axis
+ *  (hints at the fibre-production line along one wall). */
+function buildSpool(radius) {
+  const group = new THREE.Group();
+  const coreMat = new THREE.MeshStandardMaterial({ color: COLORS.accent, metalness: 0.3, roughness: 0.55 });
+  const flangeMat = new THREE.MeshStandardMaterial({ color: COLORS.spool, metalness: 0.5, roughness: 0.5 });
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.7, radius * 0.7, 0.5, 20), coreMat);
+  core.rotation.z = Math.PI / 2;
+  group.add(core);
+  [-0.28, 0.28].forEach((x) => {
+    const fl = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, 0.05, 22), flangeMat);
+    fl.rotation.z = Math.PI / 2;
+    fl.position.x = x;
+    fl.castShadow = true;
+    group.add(fl);
+  });
   return group;
 }
 
 /* ============================================================
    Scene assembly
    ============================================================ */
-function buildScene() {
-  const wireMat = new THREE.MeshStandardMaterial({ color: COLORS.wire, metalness: 0.3, roughness: 0.7 });
-  // Busbar: emissive ramps up on "power on"
-  const busMat = new THREE.MeshStandardMaterial({ color: COLORS.copper, metalness: 0.6, roughness: 0.35, emissive: 0x30ba9a, emissiveIntensity: 0.25 });
-  glowMeshes.push({ mat: busMat, base: 0.25, peak: 1.3 });
-  const insMat = new THREE.MeshStandardMaterial({ color: COLORS.insulator, metalness: 0.1, roughness: 0.7 });
 
+/* Building dimensions (long axis along X = the workshop nave). */
+const BW = 12.6, BH = 2.7, BD = 6.6, TH = 0.16; // width / height / depth / wall thickness
+const WALL_Y = 0.22 + BH / 2;
+
+function buildScene() {
   /* ---- Ground plane ---- */
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(80, 80),
+    new THREE.PlaneGeometry(120, 120),
     new THREE.MeshStandardMaterial({ color: COLORS.ground, metalness: 0.0, roughness: 1.0 })
   );
   ground.rotation.x = -Math.PI / 2;
@@ -254,65 +309,147 @@ function buildScene() {
 
   /* ---- Concrete base pad ---- */
   const pad = new THREE.Mesh(
-    new THREE.BoxGeometry(9.5, 0.25, 7),
+    new THREE.BoxGeometry(BW + 1.6, 0.25, BD + 1.6),
     new THREE.MeshStandardMaterial({ color: COLORS.base, metalness: 0.1, roughness: 0.9 })
   );
   pad.position.y = 0.1;
   pad.receiveShadow = true;
   scene.add(pad);
 
-  /* ---- Equipment group (inside the building) ---- */
+  /* ---- Interior equipment: the АСУ ТП hall ---- */
   equipment = new THREE.Group();
-
-  const t1 = buildTransformer(); t1.position.set(-2.1, 0.22, 0.1); equipment.add(t1);
-  const t2 = buildTransformer(); t2.position.set(0.4, 0.22, 0.1); equipment.add(t2);
-  const t3 = buildTransformer(); t3.position.set(2.9, 0.22, -0.2); t3.scale.setScalar(0.92); equipment.add(t3);
-
-  // Insulator posts + a glowing busbar running across the back
-  const posts = [-3.0, -0.9, 1.4, 3.4];
-  posts.forEach((x) => equipment.add(buildInsulatorPost(x, -1.9, insMat)));
-  const busbar = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 7.6, 12), busMat);
-  busbar.rotation.z = Math.PI / 2;
-  busbar.position.set(0.2, 1.95, -1.9);
-  equipment.add(busbar);
-
-  // Drop wires from busbar down to transformer bushings
-  [-2.1, 0.4, 2.9].forEach((x) => {
-    const w = buildCatenary(
-      new THREE.Vector3(x, 1.92, -1.9),
-      new THREE.Vector3(x, 2.5, 0.42),
-      0.28, wireMat
-    );
-    equipment.add(w);
-  });
-
-  // Glowing floor strip — control-room style indicator that the bay is "live"
-  const stripMat = new THREE.MeshStandardMaterial({ color: COLORS.accent, emissive: 0x30ba9a, emissiveIntensity: 0.0, metalness: 0.2, roughness: 0.6 });
-  glowMeshes.push({ mat: stripMat, base: 0.0, peak: 1.1 });
-  const strip = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.04, 0.16), stripMat);
-  strip.position.set(0, 0.26, 1.9);
-  equipment.add(strip);
-
+  buildControlHall(equipment);
   scene.add(equipment);
 
-  /* ---- Building shell (open box: 4 walls, no top) ---- */
-  // Lower walls than before so the steep open-camera sees over them,
-  // and translucent so the interior also reads from the side when open.
-  const BW = 8.4, BH = 2.45, BD = 6.0, TH = 0.14; // building w/h/d, wall thickness
-  const wallY = 0.22 + BH / 2;
+  /* ---- Building shell + roof ---- */
+  buildBuilding();
+}
+
+/** Lay out the technical floor, rows of cabinets, consoles, cable trays
+ *  and a hint of the fibre line along the back wall. */
+function buildControlHall(root) {
+  /* ---- Technical (raised access) floor ---- */
+  const floorMat = new THREE.MeshStandardMaterial({ color: COLORS.floor, metalness: 0.25, roughness: 0.7 });
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(BW - 0.5, 0.06, BD - 0.5), floorMat);
+  floor.position.y = 0.24;
+  floor.receiveShadow = true;
+  root.add(floor);
+
+  // Faint tile grid: thin inset strips along both axes (cheap, reads as
+  // a raised-floor pattern from above).
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0x35465a, metalness: 0.2, roughness: 0.8 });
+  const innerW = BW - 0.8, innerD = BD - 0.8;
+  for (let i = -2; i <= 2; i++) {
+    const gx = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.005, innerD), lineMat);
+    gx.position.set(i * (innerW / 5), 0.272, 0);
+    root.add(gx);
+    const gz = new THREE.Mesh(new THREE.BoxGeometry(innerW, 0.005, 0.03), lineMat);
+    gz.position.set(0, 0.272, i * (innerD / 5));
+    root.add(gz);
+  }
+
+  /* ---- Rows of control cabinets ----
+     3 rows along Z, each a run of cabinets along X with a small gap.
+     The middle row is consoles + cabinets; outer rows are pure racks. */
+  const FLOOR_TOP = 0.27;
+  const rowZ = [-1.85, 0.05, 1.95];        // three rows with aisles between
+  const startX = -BW / 2 + 1.4;
+  const gapX = 1.18;
+  const perRow = 8;
+
+  // Outer rows: 8 cabinets each (16) with slight per-cabinet variation.
+  [rowZ[0], rowZ[2]].forEach((z, ri) => {
+    for (let i = 0; i < perRow; i++) {
+      const tall = (i % 4 === 0);
+      const cab = buildCabinet({
+        w: 0.9,
+        h: tall ? 2.25 : 2.05,
+        d: 0.82,
+        cols: 4,
+        rows: tall ? 6 : 5
+      });
+      cab.position.set(startX + i * gapX, FLOOR_TOP, z);
+      // Rear rows face the camera (+Z); make all cabinets face +Z for a
+      // clean "front panel wall" of LEDs down each aisle.
+      root.add(cab);
+    }
+  });
+
+  // Middle row: a mix of two consoles + cabinets (the operator zone).
+  const midItems = ['cab', 'cab', 'console', 'cab', 'cab', 'console', 'cab', 'cab'];
+  midItems.forEach((kind, i) => {
+    let item;
+    if (kind === 'console') {
+      item = buildConsole();
+    } else {
+      item = buildCabinet({ w: 0.9, h: 2.0, d: 0.82, cols: 4, rows: 5 });
+    }
+    item.position.set(startX + i * gapX, FLOOR_TOP, rowZ[1]);
+    root.add(item);
+  });
+
+  /* ---- Cable trays above the two aisles ---- */
+  const trayLen = BW - 2.0;
+  const aisleZ = [(rowZ[0] + rowZ[1]) / 2, (rowZ[1] + rowZ[2]) / 2];
+  aisleZ.forEach((z) => {
+    const tray = buildCableTray(trayLen);
+    tray.position.set(0, 0.27 + 2.45, z);
+    root.add(tray);
+  });
+
+  /* ---- A glowing "system live" floor strip down the central aisle ---- */
+  const stripMat = new THREE.MeshStandardMaterial({
+    color: COLORS.accent, emissive: COLORS.accent, emissiveIntensity: 0.0,
+    metalness: 0.2, roughness: 0.6
+  });
+  glowMeshes.push({ mat: stripMat, base: 0.0, peak: 1.2 });
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(BW - 2.4, 0.03, 0.14), stripMat);
+  strip.position.set(0, 0.30, aisleZ[1] + 0.55);
+  root.add(strip);
+
+  /* ---- Atmosphere: a short fibre-production line against the back wall
+          (a rack of spools on an axis). NOT the focus — kept low + subtle. */
+  const lineGroup = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({ color: COLORS.cabinetDark, metalness: 0.5, roughness: 0.5 });
+  // support frame
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.1, 0.12), frameMat);
+  beam.position.set(0, 1.15, 0);
+  lineGroup.add(beam);
+  [-2.5, 2.5].forEach((x) => {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.12), frameMat);
+    post.position.set(x, 0.6, 0);
+    lineGroup.add(post);
+  });
+  // spools hanging on the beam
+  for (let i = -2; i <= 2; i++) {
+    const sp = buildSpool(0.34);
+    sp.position.set(i * 1.05, 0.78, 0);
+    lineGroup.add(sp);
+  }
+  lineGroup.position.set(0, FLOOR_TOP, -BD / 2 + 0.6);
+  root.add(lineGroup);
+}
+
+/** Building shell (4 translucent-on-open walls + facade ribs + window
+ *  strips) and the SEPARATE roof mesh that lifts off. Reads as a modern
+ *  industrial workshop / hangar. */
+function buildBuilding() {
   building = new THREE.Group();
 
   function makeWallMat(openOpacity) {
     const m = new THREE.MeshStandardMaterial({
-      color: COLORS.building, metalness: 0.35, roughness: 0.5,
+      color: COLORS.building, metalness: 0.35, roughness: 0.55,
       side: THREE.DoubleSide, transparent: true, opacity: 1
     });
-    // Each wall fades to its own target when open (front fades the most so
-    // it stops occluding the transformers from the lean-in camera).
     wallMaterials.push({ mat: m, open: openOpacity });
     return m;
   }
-  const trimMat = new THREE.MeshStandardMaterial({ color: COLORS.buildingDark, metalness: 0.4, roughness: 0.5 });
+  const ribMat = new THREE.MeshStandardMaterial({ color: COLORS.rib, metalness: 0.4, roughness: 0.5 });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: COLORS.glass, metalness: 0.2, roughness: 0.2,
+    transparent: true, opacity: 0.5, side: THREE.DoubleSide
+  });
+  wallMaterials.push({ mat: glassMat, open: 0.06 }); // window bands fade too
 
   function wall(w, h, d, x, y, z, openOpacity) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), makeWallMat(openOpacity));
@@ -320,76 +457,106 @@ function buildScene() {
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  building.add(wall(BW, BH, TH, 0, wallY, -BD / 2, 0.55));      // back  (keeps box readable)
-  building.add(wall(BW, BH, TH, 0, wallY, BD / 2, 0.12));       // front (fades away to reveal)
-  building.add(wall(TH, BH, BD, -BW / 2, wallY, 0, 0.4));       // left
-  building.add(wall(TH, BH, BD, BW / 2, wallY, 0, 0.4));        // right
 
-  // Horizontal trim line (windows band)
-  const band = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.05, 0.2, BD + 0.05), trimMat);
-  band.position.set(0, 0.22 + BH * 0.66, 0);
-  building.add(band);
+  // Four walls. Front (+Z) fades the most so it stops occluding the hall.
+  building.add(wall(BW, BH, TH, 0, WALL_Y, -BD / 2, 0.5));   // back
+  building.add(wall(BW, BH, TH, 0, WALL_Y, BD / 2, 0.08));   // front
+  building.add(wall(TH, BH, BD, -BW / 2, WALL_Y, 0, 0.38));  // left
+  building.add(wall(TH, BH, BD, BW / 2, WALL_Y, 0, 0.38));   // right
 
-  // Accent door frame on the front
+  // Continuous window band (strip glazing) around the upper third — the
+  // modern-cech look.
+  const bandY = 0.22 + BH * 0.7;
+  const bandH = 0.5;
+  [[-BD / 2 - 0.01, BW], [BD / 2 + 0.01, BW]].forEach(([z, len]) => {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(len, bandH, 0.04), glassMat);
+    g.position.set(0, bandY, z);
+    building.add(g);
+  });
+  [[-BW / 2 - 0.01, BD], [BW / 2 + 0.01, BD]].forEach(([x, len]) => {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(0.04, bandH, len), glassMat);
+    g.position.set(x, bandY, 0);
+    building.add(g);
+  });
+
+  // Facade ribs (vertical pilasters) along front + back for the panelised
+  // industrial façade.
+  const ribCount = 9;
+  for (let i = 0; i <= ribCount; i++) {
+    const x = -BW / 2 + (BW / ribCount) * i;
+    [-BD / 2 - 0.03, BD / 2 + 0.03].forEach((z) => {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(0.14, BH, 0.1), ribMat);
+      rib.position.set(x, WALL_Y, z);
+      building.add(rib);
+    });
+  }
+
+  // Base sill trim
+  const sill = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.2, 0.18, BD + 0.2), ribMat);
+  sill.position.set(0, 0.22 + 0.09, 0);
+  building.add(sill);
+
+  // Accent roller-shutter door on the front
   const door = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 1.9, 0.06),
+    new THREE.BoxGeometry(2.0, 1.9, 0.06),
     new THREE.MeshStandardMaterial({ color: COLORS.accent, metalness: 0.3, roughness: 0.5, emissive: 0x0c2f27, emissiveIntensity: 0.5 })
   );
-  door.position.set(-2.4, 0.22 + 0.95, BD / 2 + 0.03);
+  door.position.set(-BW / 2 + 2.4, 0.22 + 0.95, BD / 2 + 0.04);
   building.add(door);
 
   scene.add(building);
 
-  /* ---- Roof (SEPARATE mesh — this is what lifts off) ---- */
+  /* ---- Roof (SEPARATE mesh — this is what lifts off) ----
+     A low double-pitch (gable) cap built from two slanted slabs so it
+     reads as a workshop, kept as ONE group that lifts as a unit. */
   const roofMat = new THREE.MeshStandardMaterial({
     color: COLORS.roof, metalness: 0.4, roughness: 0.5,
     transparent: true, opacity: 1
   });
-  roof = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.4, 0.4, BD + 0.4), roofMat);
-  roof.castShadow = true;
-  roof.userData.baseY = 0.22 + BH + 0.18;     // resting position on top of walls
-  roof.userData.liftY = 5.0;                   // how high it travels when open
-  roof.position.y = roof.userData.baseY;
-  // ridge detail
-  const ridge = new THREE.Mesh(new THREE.BoxGeometry(BW + 0.15, 0.14, 0.55), trimMat);
-  ridge.position.y = 0.24;
-  roof.add(ridge);
-  scene.add(roof);
-
-  /* ---- Side ЛЭП pylons with cross-spans ---- */
-  const pylonH = 4.6;
-  const pL = buildPylon(pylonH); pL.position.set(-8.2, 0.22, 0); scene.add(pL);
-  const pR = buildPylon(pylonH); pR.position.set(8.2, 0.22, 0); scene.add(pR);
-
-  [-0.9, 0, 0.9].forEach((dz) => {
-    const span = buildCatenary(
-      new THREE.Vector3(-8.2, 0.22 + pylonH - 0.2, dz),
-      new THREE.Vector3(8.2, 0.22 + pylonH - 0.2, dz),
-      1.7, wireMat
-    );
-    scene.add(span);
+  roof = new THREE.Group();
+  const slabW = BW + 0.5;
+  const slabLen = (BD + 0.5) * 0.62;
+  const pitch = 0.32;
+  [-1, 1].forEach((s) => {
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, 0.18, slabLen), roofMat);
+    slab.position.set(0, 0, s * slabLen * 0.46);
+    slab.rotation.x = -s * pitch;
+    slab.castShadow = true;
+    roof.add(slab);
   });
+  // Ridge beam
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(slabW, 0.16, 0.3),
+    new THREE.MeshStandardMaterial({ color: COLORS.buildingDark, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 1 }));
+  ridge.position.y = slabLen * pitch * 0.5 + 0.06;
+  roof.add(ridge);
+  // Track every roof material so they fade together.
+  roof.userData.mats = [roofMat, ridge.material];
+
+  roof.userData.baseY = 0.22 + BH + 0.34;     // resting position on top of walls
+  roof.userData.liftY = 5.6;                    // how high it travels when open
+  roof.position.y = roof.userData.baseY;
+  scene.add(roof);
 }
 
 /* ============================================================
    Lighting
    ============================================================ */
 function buildLights() {
-  // Brighter ambient so geometry reads, still cool-toned.
-  scene.add(new THREE.AmbientLight(0x8197b4, 0.9));
+  // Bright, cool ambient so the cabinets read clearly.
+  scene.add(new THREE.AmbientLight(0x90a6c0, 1.0));
 
   // Key directional (studio) with soft shadows
-  const key = new THREE.DirectionalLight(0xffffff, 2.0);
-  key.position.set(8, 13, 7);
+  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  key.position.set(9, 15, 8);
   key.castShadow = !isMobile;
   if (key.castShadow) {
     key.shadow.mapSize.set(isMobile ? 1024 : 2048, isMobile ? 1024 : 2048);
     key.shadow.camera.near = 1;
-    key.shadow.camera.far = 50;
-    key.shadow.camera.left = -16;
-    key.shadow.camera.right = 16;
-    key.shadow.camera.top = 16;
-    key.shadow.camera.bottom = -16;
+    key.shadow.camera.far = 60;
+    key.shadow.camera.left = -20;
+    key.shadow.camera.right = 20;
+    key.shadow.camera.top = 20;
+    key.shadow.camera.bottom = -20;
     key.shadow.bias = -0.0004;
     key.shadow.normalBias = 0.02;
   }
@@ -397,20 +564,20 @@ function buildLights() {
 
   // Teal rim light for the brand glow
   const rim = new THREE.DirectionalLight(0x30ba9a, 0.85);
-  rim.position.set(-9, 5, -7);
+  rim.position.set(-11, 6, -8);
   scene.add(rim);
 
   // Fill from the front-camera side so interior faces aren't black
-  const fill = new THREE.DirectionalLight(0xb7cee4, 0.6);
-  fill.position.set(3, 5, 12);
+  const fill = new THREE.DirectionalLight(0xb7cee4, 0.65);
+  fill.position.set(3, 6, 14);
   scene.add(fill);
 
   // Hemisphere for natural ground bounce
-  scene.add(new THREE.HemisphereLight(0xaec4dd, 0x1a2942, 0.7));
+  scene.add(new THREE.HemisphereLight(0xaec4dd, 0x1a2942, 0.75));
 
   // INTERIOR accent point light — ramps up with "power on" (open).
-  interiorLight = new THREE.PointLight(0x40d8b6, 0.0, 16, 1.6);
-  interiorLight.position.set(0, 2.3, 0.2);
+  interiorLight = new THREE.PointLight(0x40d8b6, 0.0, 22, 1.6);
+  interiorLight.position.set(0, 2.4, 0.3);
   scene.add(interiorLight);
 }
 
@@ -445,32 +612,32 @@ function init() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  renderer.toneMappingExposure = 1.14;
   container.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  // Soft dark fog blends the scene base into the hero gradient
-  scene.fog = new THREE.Fog(0x18273f, 24, 46);
+  // Soft fog blends the scene base into the hero gradient.
+  scene.fog = new THREE.Fog(0x18273f, 30, 60);
 
   clock = new THREE.Clock();
 
-  camera = new THREE.PerspectiveCamera(CAM.closed.fov, width / height, 0.1, 100);
+  camera = new THREE.PerspectiveCamera(CAM.closed.fov, width / height, 0.1, 200);
 
-  // OrbitControls give us damping + the user can spin/drag, but we drive
+  // OrbitControls give us damping + the user can drag, but we drive
   // radius / polar / target / fov ourselves from `openCurrent`.
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
   controls.enableZoom = false;            // keep page scroll usable over canvas
-  controls.enableRotate = false;          // we manage azimuth manually (avoids fighting auto-demo)
+  controls.enableRotate = false;          // we manage azimuth manually
   controls.target.set(ORBIT_TARGET_X, CAM.closed.targetY, 0);
 
   buildLights();
   buildScene();
 
   // Place camera at the initial (closed) pose immediately.
-  azimuth = -0.62;            // slight right-biased 3/4 view
+  azimuth = -0.6;            // slight right-biased 3/4 view
   applyCameraPose(0, true);
 
   /* ---- Events ---- */
@@ -486,25 +653,20 @@ function init() {
   dom.addEventListener('pointerup', onPointerUp, { passive: true });
   dom.addEventListener('click', onClick);
 
-  // Peek hint button: tap/click toggles the effect (works on mobile too)
-  // and a hover previews it on desktop.
+  // Peek hint: tap/click previews the reveal (works on mobile too).
   sceneHint = document.getElementById('scene-hint');
   if (sceneHint) {
-    // Tailor the wording to the input method (hover vs touch).
     const touch = window.matchMedia('(hover: none)').matches || ('ontouchstart' in window);
     const label = sceneHint.querySelector('.hero__peek-text');
-    if (label) label.textContent = touch ? 'Нажмите, чтобы заглянуть внутрь' : 'Наведите, чтобы заглянуть внутрь';
+    if (label) label.textContent = touch ? 'Листайте — цех раскрывается' : 'Листайте, чтобы заглянуть внутрь';
     sceneHint.addEventListener('click', onClick);
-    sceneHint.addEventListener('pointerenter', () => { if (!isMobile) { userInteracted = true; hoverProgress = 1; } }, { passive: true });
+    sceneHint.addEventListener('pointerenter', () => { if (!isMobile && !scrollDriven) { userInteracted = true; hoverProgress = 1; } }, { passive: true });
     sceneHint.addEventListener('pointerleave', () => { hoverProgress = 0; }, { passive: true });
   }
 
-  // Any scroll counts as interaction (stops the auto-demo cycle).
-  window.addEventListener('scroll', () => { userInteracted = true; }, { passive: true, once: true });
-
   autoStartTime = performance.now();
 
-  // Expose a tiny debug API (used by screenshot harness; harmless otherwise).
+  // Expose a tiny debug API (used by the screenshot harness; harmless otherwise).
   window.__rasuScene = {
     setOpen(v) { debugOpen = Math.max(0, Math.min(1, v)); debugOpenActive = true; userInteracted = true; },
     clearOpen() { debugOpenActive = false; },
@@ -528,13 +690,15 @@ let lastDragX = 0;
 
 function onClick() {
   userInteracted = true;
+  // Once scroll drives the scene, clicking shouldn't fight it.
+  if (scrollDriven) return;
   clickToggle = clickToggle ? 0 : 1;
   clickProgress = clickToggle;
 }
 
 function onPointerEnter() {
   userInteracted = true;
-  if (!isMobile) hoverProgress = 1;
+  if (!isMobile && !scrollDriven) hoverProgress = 1;
 }
 function onPointerLeave() {
   hoverProgress = 0;
@@ -589,36 +753,28 @@ let debugOpenActive = false;
 let viewW = 1, viewH = 1;
 let curViewOffset = -1;
 
-/** Shift the camera frustum vertically by `frac` of the height (subject moves
- *  UP as frac grows). 0 clears the offset. Guarded so we only touch the
- *  projection when it actually changes (avoids per-frame matrix churn). */
+/** Shift the camera frustum vertically by `frac` of the height (subject
+ *  appears higher as frac grows). 0 clears the offset. Guarded so we only
+ *  touch the projection when it actually changes. */
 function applyViewOffset(frac) {
   if (Math.abs(frac - curViewOffset) < 0.001) return;
   curViewOffset = frac;
   if (!frac) {
     camera.clearViewOffset();
   } else {
-    // offsetY positive moves the rendered content DOWN in the frame, i.e.
-    // the subject appears higher. Use a negative offset to raise the subject.
     camera.setViewOffset(viewW, viewH, 0, -frac * viewH, viewW, viewH);
   }
 }
 
-/** Compute the orbit camera pose for a given eased-open amount.
- *  `snap` places it instantly (init); otherwise the caller lerps openCurrent. */
+/** Compute the orbit camera pose for a given eased-open amount. */
 function applyCameraPose(o, snap) {
   const aspect = camera.aspect || 1.6;
-  // Portrait phones: the hero copy covers the top, so we keep the substation
-  // a touch smaller, pull it slightly less close when open, and SHIFT the
-  // rendered view down so the building rises into the clear lower band.
   const portrait = aspect < 0.85;
   const narrow = aspect < 1.25;
 
-  const fovBoost = portrait ? 9 : (narrow ? 5 : 0);
-  const radiusMul = portrait ? 1.22 : (narrow ? 1.08 : 1.0);
-  // On portrait keep the open target higher (don't dive as deep) so the
-  // interior doesn't sink behind the bottom edge / hero text.
-  const openTargetY = portrait ? 1.85 : CAM.open.targetY;
+  const fovBoost = portrait ? 10 : (narrow ? 6 : 0);
+  const radiusMul = portrait ? 1.26 : (narrow ? 1.1 : 1.0);
+  const openTargetY = portrait ? 1.7 : CAM.open.targetY;
 
   const radius  = lerp(CAM.closed.radius, CAM.open.radius, o) * radiusMul;
   const polar   = lerp(CAM.closed.polar, CAM.open.polar, o);
@@ -626,13 +782,13 @@ function applyCameraPose(o, snap) {
   const fov     = lerp(CAM.closed.fov, CAM.open.fov, o) + fovBoost;
 
   // Shift the projection so the subject sits higher on tall screens.
-  applyViewOffset(portrait ? 0.21 : 0.0);
+  applyViewOffset(portrait ? 0.2 : 0.0);
 
-  // Gentle parallax (calm) added to azimuth/polar.
+  // Gentle parallax added to azimuth/polar.
   const px = reducedMotion ? 0 : mouseParallax.x * 0.10;
   const py = reducedMotion ? 0 : mouseParallax.y * 0.06;
   const az = azimuth + dragAzimuth + px;
-  const pol = THREE.MathUtils.clamp(polar - py, 0.35, 1.45);
+  const pol = THREE.MathUtils.clamp(polar - py, 0.32, 1.45);
 
   // Spherical → cartesian around the (animated) target.
   const tx = ORBIT_TARGET_X;
@@ -648,7 +804,6 @@ function applyCameraPose(o, snap) {
     camera.position.set(x, y, z);
     controls.target.copy(targetVec);
   } else {
-    // Smooth follow (lerp) — controls.update() adds its own damping on top.
     camera.position.lerp(new THREE.Vector3(x, y, z), 0.12);
     controls.target.lerp(targetVec, 0.12);
   }
@@ -666,13 +821,14 @@ function animate() {
   const dt = clock ? clock.getDelta() : 0.016;
   const now = performance.now();
 
-  /* ---- Idle auto-demo: slow open/close cycle until user interacts ---- */
-  if (!userInteracted && !reducedMotion) {
+  /* ---- Idle teaser: a single gentle peek ONLY before the first scroll.
+          Once the user scrolls, the pin-scroll fully owns the reveal. ---- */
+  if (!userInteracted && !reducedMotion && !scrollDriven) {
     const t = (now - autoStartTime) / 1000;
-    if (t > 1.6) {
-      // Smooth 0→1→0 every ~7s, after a short initial delay.
-      const phase = (t - 1.6) * (Math.PI * 2 / 7);
-      autoProgress = (1 - Math.cos(phase)) * 0.5; // 0..1..0
+    if (t > 1.4) {
+      // One soft 0→~0.5→0 swell so the user notices it's interactive.
+      const phase = (t - 1.4) * (Math.PI * 2 / 6.5);
+      autoProgress = (1 - Math.cos(phase)) * 0.28; // peaks ~0.28
     } else {
       autoProgress = 0;
     }
@@ -684,44 +840,54 @@ function animate() {
   let openTarget = Math.max(scrollProgress, hoverProgress, clickProgress, autoProgress);
   if (debugOpenActive) openTarget = debugOpen;
 
-  // Smooth, no jerk
-  openCurrent = lerp(openCurrent, openTarget, 0.09);
+  // Smooth, no jerk. Scroll-driven uses a slightly snappier follow so the
+  // reveal tracks the wheel closely; idle/hover stays silky.
+  openCurrent = lerp(openCurrent, openTarget, scrollDriven ? 0.14 : 0.09);
   const o = easeInOut(openCurrent);
 
   /* ---- Roof: lift, fade, drift + tilt for a "lid off" feel ---- */
   if (roof) {
     roof.position.y = lerp(roof.userData.baseY, roof.userData.baseY + roof.userData.liftY, o);
-    roof.position.x = lerp(0, 0.8, o);
-    roof.rotation.z = lerp(0, 0.06, o);
-    roof.material.opacity = lerp(1, 0.0, o);
-    roof.visible = roof.material.opacity > 0.02;
+    roof.position.x = lerp(0, 1.0, o);
+    roof.rotation.z = lerp(0, 0.07, o);
+    const op = lerp(1, 0.0, o);
+    roof.userData.mats.forEach((m) => { m.opacity = op; });
+    roof.visible = op > 0.02;
   }
 
-  /* ---- Walls: turn translucent so the interior reads from the side
-          (front wall fades the most — see per-wall open targets) ---- */
+  /* ---- Walls: turn translucent so the interior reads (front fades most).
+          The glass window bands start translucent; their starting opacity
+          is captured once so the lerp doesn't snap them opaque. ---- */
   for (let i = 0; i < wallMaterials.length; i++) {
     const w = wallMaterials[i];
-    w.mat.opacity = lerp(1.0, w.open, o);
+    if (w.startOp === undefined) w.startOp = w.mat.opacity; // 1.0 for walls, 0.5 for glass
+    w.mat.opacity = lerp(w.startOp, w.open, o);
     w.mat.depthWrite = w.mat.opacity > 0.95; // avoid sorting halos when see-through
   }
 
-  /* ---- Interior "power on": glow light + emissive ramps ---- */
-  if (interiorLight) interiorLight.intensity = lerp(0.0, 2.6, o);
+  /* ---- Interior "power on": glow light + emissive + LED flicker ramp ---- */
+  if (interiorLight) interiorLight.intensity = lerp(0.0, 3.0, o);
   for (let i = 0; i < glowMeshes.length; i++) {
     const g = glowMeshes[i];
     g.mat.emissiveIntensity = lerp(g.base, g.peak, o);
   }
+  // LEDs: ramp with open AND flicker over time so the system looks alive.
+  for (let i = 0; i < ledGroups.length; i++) {
+    const L = ledGroups[i];
+    const flick = reducedMotion ? 1.0 : (0.72 + 0.28 * Math.sin(now * 0.001 * L.speed + L.phase));
+    L.mat.emissiveIntensity = lerp(L.base, L.peak, o) * flick;
+  }
 
   /* ---- Peek hint: hide once the interior is clearly revealed ---- */
   if (sceneHint) {
-    const showHint = openCurrent < 0.35;
+    const showHint = openCurrent < 0.32;
     sceneHint.classList.toggle('is-hidden', !showHint);
   }
 
   /* ---- Camera: auto-rotate azimuth + lean-in driven by open ---- */
   if (!reducedMotion && !dragging) {
     // Slow drift; ease the rotation as we open so the reveal settles.
-    azimuth += dt * 0.12 * (1 - 0.8 * o);
+    azimuth += dt * 0.1 * (1 - 0.85 * o);
   }
   applyCameraPose(o, false);
 
@@ -734,7 +900,12 @@ function animate() {
    ============================================================ */
 export function setScrollProgress(t) {
   scrollProgress = Math.max(0, Math.min(1, t));
-  if (scrollProgress > 0.02) userInteracted = true;
+  if (scrollProgress > 0.002) { userInteracted = true; scrollDriven = true; }
+}
+
+/* Expose whether the live scene exists (main.js decides the pin track). */
+export function sceneActive() {
+  return !!renderer;
 }
 
 /* Auto-init on import */

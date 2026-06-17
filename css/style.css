@@ -189,14 +189,26 @@ input, textarea { font-family: inherit; font-size: 16px; }
 .burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* ============================================================
-   HERO + 3D SCENE
-   ============================================================ */
+   HERO + 3D SCENE  (scroll-pinned disassembly)
+   ============================================================
+   .hero is a tall TRACK; .hero__sticky pins to the viewport while the
+   track scrolls past. --track-h controls how much scroll the reveal
+   takes. It collapses to one viewport when there's no live scene
+   (WebGL fallback) or reduced motion, so scrolling stays normal. */
+:root { --track-h: 280vh; }
+
 .hero {
   position: relative;
-  min-height: 100svh;
+  height: var(--track-h);
+  background: var(--grad-brand);
+  isolation: isolate;
+}
+.hero__sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
   display: flex;
   align-items: center;
-  background: var(--grad-brand);
   overflow: hidden;
   isolation: isolate;
 }
@@ -213,22 +225,43 @@ input, textarea { font-family: inherit; font-size: 16px; }
   object-fit: cover; object-position: center top;
 }
 .hero__scene.is-fallback {
-  background-image: url('../assets/img/004.jpg');
+  background-image: url('../assets/img/001.jpg');
   background-size: cover;
   background-position: center top;
 }
-/* Readability gradient over the scene on the left/bottom */
-.hero::before {
+/* No general scene darkening anymore — keep the 3D bright and clean.
+   Only a soft, narrow wash hugs the lower-left so the heading keeps
+   contrast over light parts of the render. Much weaker than before. */
+.hero__sticky::before {
   content: "";
   position: absolute; inset: 0;
   z-index: 1;
   background:
-    linear-gradient(90deg, rgba(26,41,66,0.92) 0%, rgba(26,41,66,0.55) 42%, rgba(26,41,66,0.05) 70%, rgba(26,41,66,0) 100%),
-    linear-gradient(0deg, rgba(26,41,66,0.55) 0%, rgba(26,41,66,0) 40%);
+    linear-gradient(90deg, rgba(26,41,66,0.34) 0%, rgba(26,41,66,0.12) 34%, rgba(26,41,66,0) 56%),
+    linear-gradient(0deg, rgba(26,41,66,0.22) 0%, rgba(26,41,66,0) 26%);
   pointer-events: none;
 }
-.hero__inner { position: relative; z-index: 2; }
-.hero__content { max-width: 640px; }
+.hero__inner { position: relative; z-index: 2; width: 100%; }
+/* A soft backing ONLY behind the text column keeps copy legible without
+   darkening the scene as a whole. */
+.hero__content {
+  max-width: 640px;
+  padding: 28px 30px;
+  margin-left: -30px;
+  border-radius: 18px;
+  background: radial-gradient(120% 130% at 0% 40%, rgba(20,32,52,0.55) 0%, rgba(20,32,52,0.32) 45%, rgba(20,32,52,0) 80%);
+}
+/* Extra insurance: subtle text shadow so glyphs hold over bright pixels. */
+.hero__title, .hero__subtitle, .hero__eyebrow {
+  text-shadow: 0 1px 18px rgba(12, 20, 34, 0.45);
+}
+
+/* No live scene (WebGL unavailable) → collapse the track to one screen so
+   the user never scrolls through dead space; the sticky becomes a plain
+   static hero. main.js also stops feeding scroll progress. */
+html.no-scene .hero { height: 100svh; }
+html.no-scene .hero__sticky { position: relative; height: 100svh; }
+html.no-scene .hero__hint { display: none; }
 .hero__eyebrow {
   font-family: var(--font-head);
   font-weight: 500;
@@ -798,4 +831,10 @@ input, textarea { font-family: inherit; font-size: 16px; }
     transition-duration: 0.001ms !important;
   }
   .reveal { opacity: 1; transform: none; }
+
+  /* No scroll-jacking for reduced-motion users: collapse the pin track to
+     one viewport and show a plain static hero. main.js skips the pin too. */
+  .hero { height: 100svh; }
+  .hero__sticky { position: relative; height: 100svh; }
+  .hero__hint { display: none; }
 }

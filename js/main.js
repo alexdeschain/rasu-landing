@@ -8,7 +8,7 @@
    - Contact form validation + demo success
    ============================================================ */
 
-import { setScrollProgress } from './scene.js';
+import { setScrollProgress, sceneActive } from './scene.js';
 
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -132,36 +132,74 @@ function initCounters() {
 }
 
 /* ============================================================
-   Scroll -> 3D roof lift + hide scroll hint
-   Progress is 0 at hero top, 1 once we have scrolled one
-   viewport height down (the hero unveils as you scroll).
+   Scroll-pinned disassembly driver
+   --------------------------------------------------------------
+   The hero is a tall TRACK; its .hero__sticky child is pinned to the
+   viewport (CSS position: sticky). While the track scrolls past, we map
+   the scrolled distance to a 0..1 progress and feed it to the 3D scene,
+   which disassembles the workshop. Once progress reaches 1 the sticky
+   releases (native sticky behaviour) and the page scrolls on normally —
+   so anchor links and the rest of the page are never blocked.
+
+   Disabled (progress stays 0, plain static hero) when:
+     • prefers-reduced-motion is set, or
+     • there is no live WebGL scene (fallback image).
+   In both cases the CSS collapses the track to one viewport, so there is
+   no dead scroll space to get stuck in.
    ============================================================ */
 function initScrollScene() {
   const hero = document.getElementById('hero');
   const hint = document.getElementById('scroll-hint');
   if (!hero) return;
 
+  // Live check (not captured once) so script-execution order can't leave
+  // the pin permanently off: if the WebGL scene starts a tick later, the
+  // pin engages on the next scroll/resize frame. Reduced-motion always
+  // disables it. When disabled the CSS collapses the track to one screen,
+  // so scrolling stays normal and nothing gets stuck.
+  const pinDisabled = () => prefersReduced || !sceneActive();
+
+  // Track geometry, cached and refreshed on resize (vh / layout changes).
+  let trackTop = 0;
+  let travel = 1;   // px of pinned scroll distance (trackHeight - viewport)
+  const measure = () => {
+    const rect = hero.getBoundingClientRect();
+    trackTop = rect.top + window.scrollY;            // track's document offset
+    const vh = window.innerHeight || 1;
+    travel = Math.max(1, hero.offsetHeight - vh);    // guard against /0
+  };
+
   let ticking = false;
   const update = () => {
     ticking = false;
-    const vh = window.innerHeight || 1;
-    // Distance scrolled into the hero, normalised over ~85% of a viewport.
-    const scrolled = window.scrollY;
-    const progress = Math.max(0, Math.min(1, scrolled / (vh * 0.85)));
+    if (pinDisabled()) {
+      setScrollProgress(0);
+      if (hint) hint.classList.add('hidden');
+      return;
+    }
+    // Progress = how far we are through the pinned region, clamped 0..1.
+    const scrolled = window.scrollY - trackTop;
+    const progress = Math.max(0, Math.min(1, scrolled / travel));
     setScrollProgress(progress);
 
-    if (hint) hint.classList.toggle('hidden', progress > 0.06);
+    // Hide the "scroll to reveal" hint as soon as the user engages.
+    if (hint) hint.classList.toggle('hidden', progress > 0.04);
   };
 
   const onScroll = () => {
     if (!ticking) {
-      window.requestAnimationFrame(update);
       ticking = true;
+      window.requestAnimationFrame(update);
     }
   };
+  const onResize = () => { measure(); onScroll(); };
+
+  measure();
   update();
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll, { passive: true });
+  window.addEventListener('resize', onResize, { passive: true });
+  // Late layout shifts (fonts, images) can move the track; re-measure once.
+  window.addEventListener('load', onResize, { passive: true });
 }
 
 /* ============================================================
