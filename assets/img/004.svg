@@ -1,0 +1,49 @@
+<svg width="31" height="50" viewBox="0 0 31 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="path-1-inside-1_30_961" fill="white">
+<rect x="8.06024" y="1.59375" width="22.1295" height="46.8124" rx="1"/>
+</mask>
+<rect x="8.06024" y="1.59375" width="22.1295" height="46.8124" rx="1" stroke="#10427E" stroke-width="3" mask="url(#path-1-inside-1_30_961)"/>
+<mask id="path-2-inside-2_30_961" fill="white">
+<rect x="10.6137" y="24.7379" width="17.0227" height="5.1068" rx="1"/>
+</mask>
+<rect x="10.6137" y="24.7379" width="17.0227" height="5.1068" rx="1" stroke="#10427E" stroke-width="3" mask="url(#path-2-inside-2_30_961)"/>
+<line x1="14.0533" y1="24.7379" x2="14.0533" y2="28.9936" stroke="#10427E" stroke-width="1.5"/>
+<line x1="16.6067" y1="24.7379" x2="16.6067" y2="28.9936" stroke="#10427E" stroke-width="1.5"/>
+<line x1="19.16" y1="24.7379" x2="19.16" y2="28.9936" stroke="#10427E" stroke-width="1.5"/>
+<line x1="21.7135" y1="24.7379" x2="21.7135" y2="28.9936" stroke="#10427E" stroke-width="1.5"/>
+<line x1="24.2668" y1="24.7379" x2="24.2668" y2="28.9936" stroke="#10427E" stroke-width="1.5"/>
+<mask id="path-8-inside-3_30_961" fill="white">
+<rect x="10.6137" y="38.9376" width="17.0227" height="5.1068" rx="1"/>
+</mask>
+<rect x="10.6137" y="38.9376" width="17.0227" height="5.1068" rx="1" stroke="#10427E" stroke-width="3" mask="url(#path-8-inside-3_30_961)"/>
+<line x1="14.0533" y1="38.9376" x2="14.0533" y2="43.1933" stroke="#10427E" stroke-width="1.5"/>
+<line x1="16.6067" y1="38.9376" x2="16.6067" y2="43.1933" stroke="#10427E" stroke-width="1.5"/>
+<line x1="19.16" y1="38.9376" x2="19.16" y2="43.1933" stroke="#10427E" stroke-width="1.5"/>
+<line x1="21.7135" y1="38.9376" x2="21.7135" y2="43.1933" stroke="#10427E" stroke-width="1.5"/>
+<line x1="24.2668" y1="38.9376" x2="24.2668" y2="43.1933" stroke="#10427E" stroke-width="1.5"/>
+<mask id="path-14-inside-4_30_961" fill="white">
+<rect x="10.6137" y="32.0148" width="17.0227" height="5.1068" rx="1"/>
+</mask>
+<rect x="10.6137" y="32.0148" width="17.0227" height="5.1068" rx="1" stroke="#10427E" stroke-width="3" mask="url(#path-14-inside-4_30_961)"/>
+<line x1="14.0533" y1="32.0148" x2="14.0533" y2="36.2704" stroke="#10427E" stroke-width="1.5"/>
+<line x1="16.6067" y1="32.0148" x2="16.6067" y2="36.2704" stroke="#10427E" stroke-width="1.5"/>
+<line x1="19.16" y1="32.0148" x2="19.16" y2="36.2704" stroke="#10427E" stroke-width="1.5"/>
+<line x1="21.7135" y1="32.0148" x2="21.7135" y2="36.2704" stroke="#10427E" stroke-width="1.5"/>
+<line x1="24.2668" y1="32.0148" x2="24.2668" y2="36.2704" stroke="#10427E" stroke-width="1.5"/>
+<mask id="path-20-inside-5_30_961" fill="white">
+<rect x="10.6137" y="4.99841" width="17.0227" height="5.1068" rx="1"/>
+</mask>
+<rect x="10.6137" y="4.99841" width="17.0227" height="5.1068" rx="1" stroke="#10427E" stroke-width="3" mask="url(#path-20-inside-5_30_961)"/>
+<line x1="14.0533" y1="4.99841" x2="14.0533" y2="9.25408" stroke="#10427E" stroke-width="1.5"/>
+<line x1="16.6067" y1="4.99841" x2="16.6067" y2="9.25408" stroke="#10427E" stroke-width="1.5"/>
+<line x1="19.16" y1="4.99841" x2="19.16" y2="9.25408" stroke="#10427E" stroke-width="1.5"/>
+<line x1="21.7135" y1="4.99841" x2="21.7135" y2="9.25408" stroke="#10427E" stroke-width="1.5"/>
+<line x1="24.2668" y1="4.99841" x2="24.2668" y2="9.25408" stroke="#10427E" stroke-width="1.5"/>
+<path d="M1.65009 1.18304C1.65009 1.02266 1.79896 0.90376 1.95537 0.939225L8.46634 2.41555C8.58022 2.44137 8.66106 2.54259 8.66106 2.65936V47.5591C8.66106 47.6847 8.56787 47.7908 8.44332 47.8071L1.93235 48.6544C1.78273 48.6738 1.65009 48.5573 1.65009 48.4064V1.18304Z" stroke="#10427E" stroke-width="1.5"/>
+<circle cx="12.3677" cy="13.2692" r="0.935547" fill="#10427E"/>
+<circle cx="16.8121" cy="13.2692" r="0.935547" fill="#10427E"/>
+<circle cx="21.2564" cy="13.2692" r="0.935547" fill="#10427E"/>
+<circle cx="25.7008" cy="13.2692" r="0.935547" fill="#10427E"/>
+<path d="M11.9907 17.8348H26.2593" stroke="#10427E" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M11.9907 21.5586H26.2593" stroke="#10427E" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

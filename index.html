@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>РАСУ — Автоматизированные системы управления для атомной энергетики</title>
+  <meta name="description" content="РАСУ (Русатом АСУ) — разработчик автоматизированных систем управления технологическими процессами (АСУ ТП), систем РЗА и SCADA для АЭС и объектов большой энергетики. Проектирование, поставка, пусконаладка и сервис." />
+  <meta name="theme-color" content="#1a2942" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="РАСУ — Системы управления для атомной энергетики" />
+  <meta property="og:description" content="АСУ ТП, РЗА и SCADA для АЭС и большой энергетики. Полный жизненный цикл: проектирование, поставка, пусконаладка, сервис." />
+  <meta property="og:image" content="assets/img/004.jpg" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/img/008.png" />
+  <link rel="apple-touch-icon" href="assets/img/008.png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Ubuntu:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Three.js via CDN import map (no bundler, GitHub Pages friendly) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ============ HEADER ============ -->
+  <header class="header" id="header">
+    <div class="container header__inner">
+      <a href="#hero" class="header__logo" aria-label="РАСУ — на главную">
+        <img src="assets/img/logo.png" alt="РОСАТОМ" class="header__logo-img" width="236" height="50" />
+        <span class="header__logo-sep" aria-hidden="true"></span>
+        <span class="header__logo-text">РАСУ</span>
+      </a>
+
+      <nav class="nav" id="nav" aria-label="Основная навигация">
+        <ul class="nav__list">
+          <li><a href="#about" class="nav__link">О компании</a></li>
+          <li><a href="#solutions" class="nav__link">Решения</a></li>
+          <li><a href="#product" class="nav__link">Продукты</a></li>
+          <li><a href="#advantages" class="nav__link">Преимущества</a></li>
+          <li><a href="#contacts" class="nav__link">Контакты</a></li>
+        </ul>
+        <a href="#contacts" class="btn btn--accent nav__cta">Связаться</a>
+      </nav>
+
+      <button class="burger" id="burger" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="hero">
+      <!-- 3D scene mounts here; fallback image inside -->
+      <div class="hero__scene" id="scene-container" aria-hidden="true">
+        <noscript>
+          <img src="assets/img/004.jpg" alt="Электрическая подстанция" class="hero__fallback-img" />
+        </noscript>
+      </div>
+
+      <!-- Peek hint: tells the user the scene is interactive -->
+      <button type="button" class="hero__peek" id="scene-hint" aria-label="Заглянуть внутрь подстанции">
+        <span class="hero__peek-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </span>
+        <span class="hero__peek-text">Наведите, чтобы заглянуть внутрь</span>
+      </button>
+
+      <div class="container hero__inner">
+        <div class="hero__content">
+          <p class="hero__eyebrow reveal">Русатом Автоматизированные системы управления</p>
+          <h1 class="hero__title reveal">
+            Автоматизированные системы управления для&nbsp;<span class="accent-text">атомной</span> и большой энергетики
+          </h1>
+          <p class="hero__subtitle reveal">
+            Проектируем, поставляем и вводим в эксплуатацию АСУ ТП, системы релейной защиты
+            и SCADA для энергоблоков АЭС и критических объектов энергетики — с гарантией
+            надёжности на весь жизненный цикл.
+          </p>
+          <div class="hero__actions reveal">
+            <a href="#solutions" class="btn btn--accent btn--lg">Узнать больше</a>
+            <a href="#contacts" class="btn btn--ghost btn--lg">Связаться</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero__hint" id="scroll-hint" aria-hidden="true">
+        <span class="hero__hint-text">Листайте вниз</span>
+        <span class="hero__hint-mouse"><span class="hero__hint-wheel"></span></span>
+      </div>
+    </section>
+
+    <!-- ============ ABOUT ============ -->
+    <section class="section about" id="about">
+      <div class="container about__grid">
+        <div class="about__media reveal">
+          <img src="assets/img/001.jpg" alt="Блочный пункт управления энергообъекта" class="about__img" loading="lazy" />
+          <img src="assets/img/008.png" alt="Эмблема атомной отрасли" class="about__emblem" loading="lazy" />
+        </div>
+        <div class="about__content">
+          <p class="section__eyebrow reveal">О компании</p>
+          <h2 class="section__title reveal">Инженерная основа надёжной энергетики</h2>
+          <p class="about__lead reveal">
+            РАСУ — отраслевой интегратор Госкорпорации «Росатом» в области автоматизированных
+            систем управления технологическими процессами. Мы создаём цифровую нервную систему
+            энергоблоков: от датчика на технологическом оборудовании до операторской станции
+            блочного пункта управления.
+          </p>
+          <p class="about__text reveal">
+            Наши решения соответствуют требованиям ядерной и промышленной безопасности,
+            нормативам МАГАТЭ и российским стандартам. Мы сопровождаем проект на всех этапах —
+            от концепции и проектирования до пусконаладки и сервисной поддержки в течение
+            десятилетий эксплуатации.
+          </p>
+          <ul class="about__points">
+            <li class="reveal"><span class="about__point-mark"></span>Полный жизненный цикл АСУ ТП — проект, поставка, ПНР, сервис</li>
+            <li class="reveal"><span class="about__point-mark"></span>Соответствие нормам ядерной безопасности и стандартам МАГАТЭ</li>
+            <li class="reveal"><span class="about__point-mark"></span>Импортонезависимая аппаратно-программная платформа</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ SOLUTIONS ============ -->
+    <section class="section solutions" id="solutions">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow reveal">Решения и услуги</p>
+          <h2 class="section__title reveal">Комплексные решения для энергообъектов</h2>
+          <p class="section__desc reveal">
+            Закрываем все задачи автоматизации энергоблока — от полевого уровня до
+            верхнего уровня управления и эксплуатационного сервиса.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/021.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">АСУ ТП</h3>
+            <p class="card__text">
+              Проектирование и внедрение автоматизированных систем управления
+              технологическими процессами энергоблоков — нижний, средний и верхний уровни.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/017.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">Релейная защита и автоматика</h3>
+            <p class="card__text">
+              Системы РЗА для электротехнического оборудования подстанций и распределительных
+              устройств: быстрое и селективное отключение аварийных режимов.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/027.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">SCADA-системы</h3>
+            <p class="card__text">
+              Диспетчерское управление и сбор данных в реальном времени, мнемосхемы,
+              архивирование, аналитика и поддержка принятия решений оператором.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/029.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">Проектирование</h3>
+            <p class="card__text">
+              Полный цикл проектных работ: концепция, рабочая документация, моделирование
+              и обоснование решений по автоматизации и электротехнике.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/024.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">Пусконаладка</h3>
+            <p class="card__text">
+              Монтажный надзор, наладка оборудования и комплексные испытания систем
+              управления с выводом энергоблока на проектные параметры.
+            </p>
+          </article>
+
+          <article class="card reveal">
+            <div class="card__icon"><img src="assets/img/013.svg" alt="" aria-hidden="true" /></div>
+            <h3 class="card__title">Сервис и поддержка</h3>
+            <p class="card__text">
+              Сопровождение жизненного цикла: техническая поддержка, модернизация,
+              поставка ЗИП и обучение эксплуатационного персонала.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PRODUCT: RASU-10 ============ -->
+    <section class="section product" id="product">
+      <div class="container product__inner">
+        <div class="product__content">
+          <p class="section__eyebrow section__eyebrow--light reveal">Платформа</p>
+          <h2 class="section__title section__title--light reveal">RASU-10 — программно-технический комплекс</h2>
+          <p class="product__lead reveal">
+            RASU-10 — отечественная платформа для построения АСУ ТП объектов атомной
+            и тепловой энергетики. Единая аппаратно-программная экосистема: контроллеры,
+            модули ввода-вывода, серверы и инструменты разработки прикладного ПО.
+          </p>
+          <ul class="product__features">
+            <li class="reveal"><strong>Надёжность класса безопасности</strong> — резервирование и диагностика на всех уровнях</li>
+            <li class="reveal"><strong>Масштабируемость</strong> — от отдельной системы до полной АСУ ТП энергоблока</li>
+            <li class="reveal"><strong>Кибербезопасность</strong> — встроенная защита и соответствие требованиям КИИ</li>
+            <li class="reveal"><strong>Открытые протоколы</strong> — интеграция с системами заказчика и сторонним оборудованием</li>
+          </ul>
+          <a href="#contacts" class="btn btn--accent btn--lg reveal">Запросить презентацию</a>
+        </div>
+        <div class="product__visual reveal" aria-hidden="true">
+          <div class="product__badge">RASU-10</div>
+          <div class="product__rings">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ADVANTAGES (counters) ============ -->
+    <section class="section advantages" id="advantages">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow reveal">Преимущества</p>
+          <h2 class="section__title reveal">Опыт, которому доверяют</h2>
+        </div>
+        <div class="stats">
+          <div class="stat reveal">
+            <div class="stat__num" data-count="25" data-suffix="+">0</div>
+            <div class="stat__label">лет в атомной энергетике</div>
+          </div>
+          <div class="stat reveal">
+            <div class="stat__num" data-count="120" data-suffix="+">0</div>
+            <div class="stat__label">реализованных проектов</div>
+          </div>
+          <div class="stat reveal">
+            <div class="stat__num" data-count="30" data-suffix="">0</div>
+            <div class="stat__label">энергоблоков под управлением</div>
+          </div>
+          <div class="stat reveal">
+            <div class="stat__num" data-count="99" data-suffix="%">0</div>
+            <div class="stat__label">готовность систем</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GALLERY ============ -->
+    <section class="section gallery" id="gallery">
+      <div class="container">
+        <div class="section__head">
+          <p class="section__eyebrow reveal">Объекты</p>
+          <h2 class="section__title reveal">Энергетика в деталях</h2>
+        </div>
+        <div class="gallery__grid">
+          <figure class="gallery__item gallery__item--wide reveal">
+            <img src="assets/img/004.jpg" alt="Силовые трансформаторы и оборудование подстанции" loading="lazy" />
+            <figcaption>Открытое распределительное устройство</figcaption>
+          </figure>
+          <figure class="gallery__item reveal">
+            <img src="assets/img/001.jpg" alt="Блочный пункт управления" loading="lazy" />
+            <figcaption>Блочный пункт управления</figcaption>
+          </figure>
+          <figure class="gallery__item gallery__item--tall reveal">
+            <img src="assets/img/banner.jpg" alt="Энергообъект в ночное время" loading="lazy" />
+            <figcaption>Непрерывность управления 24/7</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACTS ============ -->
+    <section class="section contacts" id="contacts">
+      <div class="container contacts__grid">
+        <div class="contacts__info">
+          <p class="section__eyebrow reveal">Контакты</p>
+          <h2 class="section__title reveal">Обсудим ваш проект</h2>
+          <p class="contacts__text reveal">
+            Расскажите о задаче автоматизации — наши инженеры подготовят техническое
+            предложение и помогут выбрать оптимальное решение.
+          </p>
+          <ul class="contacts__list">
+            <li class="reveal"><span class="contacts__label">Адрес</span><span>г. Москва, ул. Ферганская, д. 25</span></li>
+            <li class="reveal"><span class="contacts__label">Телефон</span><a href="tel:+74951234567">+7 (495) 123-45-67</a></li>
+            <li class="reveal"><span class="contacts__label">E-mail</span><a href="mailto:info@rasu.pro">info@rasu.pro</a></li>
+          </ul>
+        </div>
+
+        <form class="contacts__form reveal" id="contact-form" novalidate>
+          <div class="field">
+            <label for="name">Имя</label>
+            <input type="text" id="name" name="name" autocomplete="name" required placeholder="Иван Иванов" />
+            <span class="field__error" data-error-for="name"></span>
+          </div>
+          <div class="field">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" autocomplete="email" required placeholder="name@company.ru" />
+            <span class="field__error" data-error-for="email"></span>
+          </div>
+          <div class="field">
+            <label for="message">Сообщение</label>
+            <textarea id="message" name="message" rows="4" required placeholder="Опишите вашу задачу"></textarea>
+            <span class="field__error" data-error-for="message"></span>
+          </div>
+          <button type="submit" class="btn btn--accent btn--lg btn--block">Отправить сообщение</button>
+          <p class="contacts__success" id="form-success" role="status" hidden>
+            Спасибо! Сообщение отправлено. Мы свяжемся с вами в ближайшее время.
+          </p>
+          <p class="contacts__note">Демонстрационная форма — данные не передаются на сервер.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <img src="assets/img/logo.png" alt="РОСАТОМ" class="footer__logo" width="236" height="50" />
+        <p class="footer__tagline">Русатом Автоматизированные системы управления</p>
+      </div>
+      <nav class="footer__nav" aria-label="Подвал">
+        <a href="#about">О компании</a>
+        <a href="#solutions">Решения</a>
+        <a href="#product">Продукты</a>
+        <a href="#advantages">Преимущества</a>
+        <a href="#contacts">Контакты</a>
+      </nav>
+    </div>
+    <div class="footer__bottom">
+      <div class="container">
+        <p>© <span id="year">2026</span> РАСУ. Все права защищены.</p>
+        <p class="footer__legal">Демонстрационный сайт. Материалы носят справочный характер.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts (modules) -->
+  <script type="module" src="js/scene.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
