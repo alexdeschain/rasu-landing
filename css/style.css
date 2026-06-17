@@ -289,118 +289,29 @@ html.no-scene .hero__hint { display: none; }
 }
 .hero__actions { display: flex; gap: 16px; flex-wrap: wrap; }
 
-/* Scroll hint */
+/* Scroll hint — a single minimalist chevron that bounces, centred at the
+   bottom. Hidden (via .hidden) as soon as the user starts scrolling. */
 .hero__hint {
   position: absolute;
-  bottom: 28px; left: 50%;
+  bottom: clamp(20px, 5vh, 40px); left: 50%;
   transform: translateX(-50%);
   z-index: 3;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  transition: opacity .4s var(--ease);
-}
-.hero__hint.hidden { opacity: 0; pointer-events: none; }
-.hero__hint-text {
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  color: var(--text-on-dark);
-  text-transform: uppercase;
-  font-family: var(--font-head);
-}
-.hero__hint-mouse {
-  width: 26px; height: 42px;
-  border: 2px solid rgba(215, 226, 236, 0.6);
-  border-radius: 14px;
-  display: flex;
-  justify-content: center;
-  padding-top: 7px;
-}
-.hero__hint-wheel {
-  width: 4px; height: 8px;
-  background: var(--accent-300);
-  border-radius: 2px;
-  animation: wheel 1.7s var(--ease) infinite;
-}
-@keyframes wheel {
-  0% { transform: translateY(0); opacity: 1; }
-  70% { transform: translateY(12px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 0; }
-}
-
-/* Peek hint — invites the user to look inside the 3D substation.
-   Sits over the scene (right side, clear of the heading gradient). */
-.hero__peek {
-  position: absolute;
-  z-index: 3;
-  right: clamp(16px, 4vw, 56px);
-  bottom: clamp(72px, 16vh, 132px);
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 18px 11px 14px;
-  font-family: var(--font-head);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  color: var(--white);
-  background: rgba(26, 41, 66, 0.55);
-  border: 1px solid rgba(48, 186, 154, 0.55);
-  border-radius: 999px;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28), 0 0 0 0 rgba(48, 186, 154, 0.45);
-  transition: opacity .45s var(--ease), transform .35s var(--ease),
-              visibility .45s var(--ease), background-color .25s var(--ease),
-              border-color .25s var(--ease);
-  animation: peekPulse 2.8s var(--ease) infinite;
-}
-.hero__peek:hover {
-  transform: translateY(-2px);
-  background: rgba(26, 41, 66, 0.72);
-  border-color: var(--accent);
-}
-.hero__peek:focus-visible {
-  outline: 2px solid var(--accent-300);
-  outline-offset: 3px;
-}
-.hero__peek-icon {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--accent-300);
+  transition: opacity .4s var(--ease);
 }
-.hero__peek-text { white-space: nowrap; }
-/* Hidden once the interior is revealed (toggled from scene.js) */
-.hero__peek.is-hidden {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(8px);
-  pointer-events: none;
-  animation: none;
+.hero__hint.hidden { opacity: 0; pointer-events: none; }
+.hero__hint-chevron {
+  width: 30px; height: 30px;
+  /* Animate the inner SVG (not the centred container) so translateX(-50%)
+     on the parent is never disturbed. */
+  animation: bounceDown 1.8s var(--ease) infinite;
 }
-@keyframes peekPulse {
-  0%   { box-shadow: 0 8px 26px rgba(0,0,0,0.28), 0 0 0 0 rgba(48,186,154,0.5); }
-  70%  { box-shadow: 0 8px 26px rgba(0,0,0,0.28), 0 0 0 12px rgba(48,186,154,0); }
-  100% { box-shadow: 0 8px 26px rgba(0,0,0,0.28), 0 0 0 0 rgba(48,186,154,0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hero__peek { animation: none; }
-}
-@media (max-width: 768px) {
-  .hero__peek {
-    right: 50%;
-    transform: translateX(50%);
-    bottom: 30px;
-    font-size: 13px;
-    padding: 10px 16px 10px 12px;
-  }
-  .hero__peek:hover { transform: translateX(50%) translateY(-2px); }
-  .hero__peek.is-hidden { transform: translateX(50%) translateY(8px); }
-  /* The peek button carries the message on mobile — drop the scroll mouse. */
-  .hero__hint { display: none; }
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
 }
 
 /* ============================================================
@@ -776,6 +687,45 @@ html.no-scene .hero__hint { display: none; }
 @media (max-width: 768px) {
   body { font-size: 16px; }
 
+  /* Lengthen the pin track so the 3D disassembly plays out over ~2.4
+     screens of scroll instead of racing past in ~1.8 (low mobile screens
+     turn 280vh into too few pixels). The no-scene / reduced-motion
+     collapses still override this (higher specificity / later source). */
+  :root { --track-h: 350vh; }
+
+  /* HERO on mobile: text becomes a compact card pinned to the TOP, leaving
+     the lower ~55-60% of the screen as clean, fully-visible 3D scene. */
+  .hero__sticky {
+    align-items: flex-start;                 /* push copy to the top */
+    padding-top: calc(var(--header-h) + 16px); /* clear the fixed header */
+  }
+  .hero__content {
+    max-width: 100%;
+    margin-left: 0;
+    padding: 16px 16px 14px;
+    border-radius: 14px;
+    /* Soft backing ONLY under the text — fades out before mid-screen so it
+       never darkens the lower scene. */
+    background: linear-gradient(180deg,
+      rgba(20, 32, 52, 0.55) 0%,
+      rgba(20, 32, 52, 0.32) 70%,
+      rgba(20, 32, 52, 0) 100%);
+  }
+  .hero__eyebrow {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+  .hero__title {
+    font-size: clamp(26px, 7vw, 34px);
+    margin-bottom: 14px;
+  }
+  .hero__subtitle {
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
+  .hero__actions { gap: 12px; }
+  .hero__actions .btn { padding: 12px 20px; font-size: 15px; }
+
   /* Mobile nav */
   .nav {
     position: fixed;
@@ -810,6 +760,12 @@ html.no-scene .hero__hint { display: none; }
   .footer__inner { flex-direction: column; align-items: flex-start; }
 }
 
+@media (max-width: 560px) {
+  /* On narrow phones drop the subtitle entirely so the text card stays in
+     the upper ~40% and the scene owns the rest of the screen. */
+  .hero__subtitle { display: none; }
+}
+
 @media (max-width: 520px) {
   .container { padding: 0 18px; }
   .section { padding: 64px 0; }
@@ -818,6 +774,10 @@ html.no-scene .hero__hint { display: none; }
   .hero__actions .btn { flex: 1; }
   .contacts__form { padding: 26px 20px; }
   .header__logo-text { font-size: 19px; }
+
+  /* Even more pin travel on the shortest screens (subtitle is gone, so the
+     extra scroll all goes to watching the workshop come apart). */
+  :root { --track-h: 370vh; }
 }
 
 /* ============================================================

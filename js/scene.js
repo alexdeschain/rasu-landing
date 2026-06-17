@@ -39,9 +39,6 @@ function webglAvailable() {
 function showFallback(container) {
   // Static photo instead of the live canvas.
   container.classList.add('is-fallback');
-  // The peek hint is meaningless without the live scene.
-  const hint = document.getElementById('scene-hint');
-  if (hint) hint.style.display = 'none';
   // Let the page know there is no scroll-driven disassembly, so the
   // pin track can collapse and scrolling stays normal.
   document.documentElement.classList.add('no-scene');
@@ -82,7 +79,7 @@ let autoProgress = 0;       // 0..1 idle teaser (before first scroll only)
 let openCurrent = 0;        // lerped actual open amount (drives everything)
 
 let renderer, scene, camera, controls, clock;
-let roof, building, equipment, interiorLight, sceneHint;
+let roof, building, equipment, interiorLight;
 let wallMaterials = [];
 let glowMeshes = [];        // emissive materials whose intensity ramps with open
 let ledGroups = [];         // { mat, base, peak, phase, speed } — blinking LEDs
@@ -653,17 +650,6 @@ function init() {
   dom.addEventListener('pointerup', onPointerUp, { passive: true });
   dom.addEventListener('click', onClick);
 
-  // Peek hint: tap/click previews the reveal (works on mobile too).
-  sceneHint = document.getElementById('scene-hint');
-  if (sceneHint) {
-    const touch = window.matchMedia('(hover: none)').matches || ('ontouchstart' in window);
-    const label = sceneHint.querySelector('.hero__peek-text');
-    if (label) label.textContent = touch ? 'Листайте — цех раскрывается' : 'Листайте, чтобы заглянуть внутрь';
-    sceneHint.addEventListener('click', onClick);
-    sceneHint.addEventListener('pointerenter', () => { if (!isMobile && !scrollDriven) { userInteracted = true; hoverProgress = 1; } }, { passive: true });
-    sceneHint.addEventListener('pointerleave', () => { hoverProgress = 0; }, { passive: true });
-  }
-
   autoStartTime = performance.now();
 
   // Expose a tiny debug API (used by the screenshot harness; harmless otherwise).
@@ -876,12 +862,6 @@ function animate() {
     const L = ledGroups[i];
     const flick = reducedMotion ? 1.0 : (0.72 + 0.28 * Math.sin(now * 0.001 * L.speed + L.phase));
     L.mat.emissiveIntensity = lerp(L.base, L.peak, o) * flick;
-  }
-
-  /* ---- Peek hint: hide once the interior is clearly revealed ---- */
-  if (sceneHint) {
-    const showHint = openCurrent < 0.32;
-    sceneHint.classList.toggle('is-hidden', !showHint);
   }
 
   /* ---- Camera: auto-rotate azimuth + lean-in driven by open ---- */
