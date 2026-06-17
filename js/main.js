@@ -8,7 +8,7 @@
    - Contact form validation + demo success
    ============================================================ */
 
-import { setScrollProgress, sceneActive } from './scene.js';
+import { setScrollProgress, sceneActive, isMobileMode, startAutoOpen } from './scene.js';
 
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -132,34 +132,41 @@ function initCounters() {
 }
 
 /* ============================================================
-   Scroll-pinned disassembly driver
+   Hero disassembly driver — two distinct modes
    --------------------------------------------------------------
-   The hero is a tall TRACK; its .hero__sticky child is pinned to the
-   viewport (CSS position: sticky). While the track scrolls past, we map
-   the scrolled distance to a 0..1 progress and feed it to the 3D scene,
-   which disassembles the workshop. Once progress reaches 1 the sticky
-   releases (native sticky behaviour) and the page scrolls on normally —
-   so anchor links and the rest of the page are never blocked.
+   DESKTOP (>768px): scroll-pinned. The hero is a tall TRACK; its
+   .hero__sticky child is pinned (CSS position: sticky). The scrolled
+   distance through the track maps to 0..1 and feeds the 3D scene, which
+   disassembles the workshop. Once progress hits 1 the sticky releases and
+   the page scrolls on normally. A bouncing chevron hints "scroll".
 
-   Disabled (progress stays 0, plain static hero) when:
-     • prefers-reduced-motion is set, or
-     • there is no live WebGL scene (fallback image).
-   In both cases the CSS collapses the track to one viewport, so there is
-   no dead scroll space to get stuck in.
+   MOBILE (≤768px, touch / narrow): NO pin. The hero is one screen
+   (~100svh, set via the `mobile-scene` class on <html>). The disassembly
+   is a self-playing, time-based tween started by a TAP on the scene/hint
+   (scene.js → startAutoOpen). After it plays the page just scrolls normally
+   to #about. A prominent "tap to start" button advertises the interaction.
+
+   Both modes degrade: with prefers-reduced-motion or no live WebGL scene,
+   the pin/tween is skipped, the track collapses to one viewport (CSS), and
+   the hint/tap button is hidden — scrolling stays normal and unstuck.
+
+   The active mode is re-derived on resize, so a portrait↔landscape flip
+   across the 768px breakpoint switches behaviour without a reload.
    ============================================================ */
 function initScrollScene() {
   const hero = document.getElementById('hero');
-  const hint = document.getElementById('scroll-hint');
+  const scrollHint = document.getElementById('scroll-hint');   // desktop chevron
+  const tapHint = document.getElementById('tap-hint');         // mobile button
   if (!hero) return;
 
-  // Live check (not captured once) so script-execution order can't leave
-  // the pin permanently off: if the WebGL scene starts a tick later, the
-  // pin engages on the next scroll/resize frame. Reduced-motion always
-  // disables it. When disabled the CSS collapses the track to one screen,
-  // so scrolling stays normal and nothing gets stuck.
-  const pinDisabled = () => prefersReduced || !sceneActive();
+  const root = document.documentElement;
 
-  // Track geometry, cached and refreshed on resize (vh / layout changes).
+  // Live checks (not captured once) so late scene start / resize are honoured.
+  const reduced = () => prefersReduced;
+  const noScene = () => !sceneActive();
+  const mobile = () => isMobileMode();
+
+  /* ---- DESKTOP scroll-pin geometry ---- */
   let trackTop = 0;
   let travel = 1;   // px of pinned scroll distance (trackHeight - viewport)
   const measure = () => {
@@ -169,21 +176,57 @@ function initScrollScene() {
     travel = Math.max(1, hero.offsetHeight - vh);    // guard against /0
   };
 
+  // Has the mobile tap been offered already (so we wire it once)?
+  let tapWired = false;
+  const fireTap = (e) => {
+    if (e) e.preventDefault();
+    startAutoOpen();
+    if (tapHint) tapHint.classList.add('hidden');
+  };
+  const wireTap = () => {
+    if (tapWired) return;
+    tapWired = true;
+    const scene = document.getElementById('scene-container');
+    // Tapping the hint OR anywhere on the scene starts the reveal.
+    if (tapHint) tapHint.addEventListener('click', fireTap);
+    if (scene) scene.addEventListener('click', () => fireTap());
+  };
+
+  // Apply the body/root state for the CURRENT mode. Idempotent.
+  const applyMode = () => {
+    const isMobile = mobile();
+    const disabled = reduced() || noScene();   // no interactive reveal at all
+    root.classList.toggle('mobile-scene', isMobile);
+
+    if (isMobile) {
+      // Mobile owns the reveal via tap; never feed scroll progress.
+      setScrollProgress(0);
+      if (scrollHint) scrollHint.classList.add('hidden');
+      // Show the tap button only when an interactive scene is actually live.
+      if (tapHint) tapHint.classList.toggle('hidden', disabled);
+      if (!disabled) wireTap();
+    } else {
+      // Desktop: chevron handled by the scroll updater; hide the tap button.
+      if (tapHint) tapHint.classList.add('hidden');
+    }
+  };
+
   let ticking = false;
   const update = () => {
     ticking = false;
-    if (pinDisabled()) {
+    // On mobile the scroll never drives the scene.
+    if (mobile()) return;
+    if (reduced() || noScene()) {
       setScrollProgress(0);
-      if (hint) hint.classList.add('hidden');
+      if (scrollHint) scrollHint.classList.add('hidden');
       return;
     }
     // Progress = how far we are through the pinned region, clamped 0..1.
     const scrolled = window.scrollY - trackTop;
     const progress = Math.max(0, Math.min(1, scrolled / travel));
     setScrollProgress(progress);
-
-    // Hide the "scroll to reveal" hint as soon as the user engages.
-    if (hint) hint.classList.toggle('hidden', progress > 0.04);
+    // Hide the "scroll to reveal" chevron as soon as the user engages.
+    if (scrollHint) scrollHint.classList.toggle('hidden', progress > 0.04);
   };
 
   const onScroll = () => {
@@ -192,8 +235,9 @@ function initScrollScene() {
       window.requestAnimationFrame(update);
     }
   };
-  const onResize = () => { measure(); onScroll(); };
+  const onResize = () => { applyMode(); measure(); onScroll(); };
 
+  applyMode();
   measure();
   update();
   window.addEventListener('scroll', onScroll, { passive: true });

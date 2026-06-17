@@ -102,6 +102,21 @@
             <path d="M6 9l6 6 6-6"/>
           </svg>
         </div>
+
+        <!-- MOBILE-only tap trigger: advertises that the 3D scene opens on
+             tap. Shown/hidden by main.js (only when a live WebGL scene
+             exists). A real <button> for accessibility; tapping it (or the
+             scene) starts the self-playing disassembly. -->
+        <button class="hero__tap hidden" id="tap-hint" type="button" aria-label="Нажмите, чтобы заглянуть внутрь цеха">
+          <span class="hero__tap-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V11"/>
+              <path d="M12 11V5a1.5 1.5 0 0 1 3 0v6"/>
+              <path d="M15 11V7a1.5 1.5 0 0 1 3 0v6.5c0 3.6-2.2 6.5-6 6.5-2.3 0-3.6-.8-4.8-2.3l-2.5-3.2a1.5 1.5 0 0 1 2.3-1.9L9 14"/>
+            </svg>
+          </span>
+          <span class="hero__tap-text">Нажмите, чтобы заглянуть внутрь</span>
+        </button>
       </div>
     </section>
 

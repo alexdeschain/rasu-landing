@@ -78,6 +78,23 @@ let clickProgress = 0;      // 0..1 toggled by click
 let autoProgress = 0;       // 0..1 idle teaser (before first scroll only)
 let openCurrent = 0;        // lerped actual open amount (drives everything)
 
+/* Mobile = tap-driven self-contained tween (NO scroll pin). The query is
+   re-evaluated on resize so a portrait→landscape flip past 768px switches
+   behaviour without a reload. */
+const MOBILE_QUERY = '(max-width: 768px)';
+
+/* Time-based auto-open tween (mobile tap). Independent of scroll: when
+   active it OWNS `openCurrent` and drives it 0→1 over a fixed duration with
+   an easing twin, then holds at 1. This is deliberately NOT a lerp toward a
+   scroll target — the spec wants a self-playing reveal. */
+let autoOpen = {
+  active: false,    // currently tweening
+  done: false,      // reached 1 and holding open
+  start: 0,         // performance.now() at tween start
+  from: 0,          // openCurrent when the tween began
+  duration: 2000    // ms (within the requested 1.5–2.5s window)
+};
+
 let renderer, scene, camera, controls, clock;
 let roof, building, equipment, interiorLight;
 let wallMaterials = [];
@@ -586,12 +603,18 @@ function init() {
   if (!container) return;
 
   reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  isMobile = window.matchMedia('(max-width: 768px)').matches;
+  isMobile = window.matchMedia(MOBILE_QUERY).matches;
 
   if (!webglAvailable()) {
     showFallback(container);
     return;
   }
+
+  // Reduced-motion on MOBILE: there is no scroll-pin and no tap animation to
+  // drive the reveal, so present the workshop ALREADY OPEN (the informative
+  // end-state) instead of a closed box the user can't open. Held by the
+  // autoOpen.done branch in animate().
+  if (reducedMotion && isMobile) { autoOpen.done = true; openCurrent = 1; }
 
   let width = container.clientWidth || window.innerWidth;
   let height = container.clientHeight || window.innerHeight;
@@ -674,9 +697,24 @@ let clickToggle = 0;
 let dragging = false;
 let lastDragX = 0;
 
+/** MOBILE tap trigger: kick off the self-playing disassembly tween from the
+ *  CURRENT open amount up to fully open. Idempotent — a second tap while it
+ *  is already running (or finished) is ignored, so double-taps can't restart
+ *  or jitter the reveal. With reduced-motion we snap straight to open. */
+export function startAutoOpen() {
+  userInteracted = true;
+  if (autoOpen.active || autoOpen.done) return;     // guard double-tap
+  if (reducedMotion) { autoOpen.done = true; openCurrent = 1; return; }
+  autoOpen.active = true;
+  autoOpen.from = openCurrent;
+  autoOpen.start = performance.now();
+}
+
 function onClick() {
   userInteracted = true;
-  // Once scroll drives the scene, clicking shouldn't fight it.
+  // MOBILE: a tap launches the self-playing disassembly (no scroll pin).
+  if (isMobile) { startAutoOpen(); return; }
+  // DESKTOP: once scroll drives the scene, clicking shouldn't fight it.
   if (scrollDriven) return;
   clickToggle = clickToggle ? 0 : 1;
   clickProgress = clickToggle;
@@ -715,7 +753,14 @@ function onPointerMove(e) {
 function onResize() {
   const container = document.getElementById(CONTAINER_ID);
   if (!container || !renderer) return;
-  isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const wasMobile = isMobile;
+  isMobile = window.matchMedia(MOBILE_QUERY).matches;
+  // Crossed the breakpoint → hand ownership back to the mode that now applies
+  // so neither the desktop scroll-pin nor the mobile tap-tween gets stuck.
+  if (wasMobile !== isMobile) {
+    autoOpen.active = false;
+    autoOpen.done = false;
+  }
   const w = container.clientWidth || window.innerWidth;
   const h = container.clientHeight || window.innerHeight;
   camera.aspect = w / h;
@@ -808,8 +853,9 @@ function animate() {
   const now = performance.now();
 
   /* ---- Idle teaser: a single gentle peek ONLY before the first scroll.
-          Once the user scrolls, the pin-scroll fully owns the reveal. ---- */
-  if (!userInteracted && !reducedMotion && !scrollDriven) {
+          Disabled on mobile (the tap hint does the "it's interactive" job
+          there) so it can't fight the tap-driven tween. ---- */
+  if (!isMobile && !userInteracted && !reducedMotion && !scrollDriven) {
     const t = (now - autoStartTime) / 1000;
     if (t > 1.4) {
       // One soft 0→~0.5→0 swell so the user notices it's interactive.
@@ -822,14 +868,33 @@ function animate() {
     autoProgress = 0;
   }
 
-  /* ---- Combine all open sources (max wins) ---- */
-  let openTarget = Math.max(scrollProgress, hoverProgress, clickProgress, autoProgress);
-  if (debugOpenActive) openTarget = debugOpen;
-
-  // Smooth, no jerk. Scroll-driven uses a slightly snappier follow so the
-  // reveal tracks the wheel closely; idle/hover stays silky.
-  openCurrent = lerp(openCurrent, openTarget, scrollDriven ? 0.14 : 0.09);
-  const o = easeInOut(openCurrent);
+  /* ---- Open amount ---------------------------------------------------- */
+  let o;
+  if (debugOpenActive) {
+    // Debug API forces a value directly (used by the screenshot harness).
+    openCurrent = lerp(openCurrent, debugOpen, 0.2);
+    o = easeInOut(openCurrent);
+  } else if (autoOpen.active || autoOpen.done) {
+    // MOBILE tap tween OWNS the open amount: a self-playing, time-based twin
+    // from `from`→1 over autoOpen.duration, then hold at 1. We advance the
+    // raw 0..1 amount here and let the shared easeInOut below shape the
+    // curve (single source of easing → smooth, no double-easing).
+    if (autoOpen.active) {
+      const p = Math.min(1, (now - autoOpen.start) / autoOpen.duration);
+      openCurrent = autoOpen.from + (1 - autoOpen.from) * p;
+      if (p >= 1) { openCurrent = 1; autoOpen.active = false; autoOpen.done = true; }
+    } else {
+      openCurrent = 1; // hold fully open
+    }
+    o = easeInOut(openCurrent);
+  } else {
+    /* ---- Combine all open sources (max wins) — desktop scroll/hover/click. */
+    const openTarget = Math.max(scrollProgress, hoverProgress, clickProgress, autoProgress);
+    // Smooth, no jerk. Scroll-driven uses a slightly snappier follow so the
+    // reveal tracks the wheel closely; idle/hover stays silky.
+    openCurrent = lerp(openCurrent, openTarget, scrollDriven ? 0.14 : 0.09);
+    o = easeInOut(openCurrent);
+  }
 
   /* ---- Roof: lift, fade, drift + tilt for a "lid off" feel ---- */
   if (roof) {
@@ -886,6 +951,12 @@ export function setScrollProgress(t) {
 /* Expose whether the live scene exists (main.js decides the pin track). */
 export function sceneActive() {
   return !!renderer;
+}
+
+/* Live mobile check (re-evaluated, not cached) so main.js and scene.js agree
+   on the mode even after a resize across the 768px breakpoint. */
+export function isMobileMode() {
+  return window.matchMedia(MOBILE_QUERY).matches;
 }
 
 /* Auto-init on import */

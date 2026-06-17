@@ -262,6 +262,17 @@ input, textarea { font-family: inherit; font-size: 16px; }
 html.no-scene .hero { height: 100svh; }
 html.no-scene .hero__sticky { position: relative; height: 100svh; }
 html.no-scene .hero__hint { display: none; }
+
+/* MOBILE tap-driven mode (set by main.js on ≤768px): NO scroll pin. The
+   hero is exactly ONE screen, the sticky becomes a plain static block (no
+   tall track, no "залипание"), the disassembly is driven by a tap. This
+   class beats the responsive `--track-h` because it sets `height` directly
+   at higher specificity. Anchor links / section scrolling work normally
+   because the page is no longer 3.5 screens tall before #about. */
+html.mobile-scene .hero { height: 100vh; height: 100svh; }
+html.mobile-scene .hero__sticky { position: relative; height: 100vh; height: 100svh; }
+html.mobile-scene .hero__hint { display: none; }          /* no scroll chevron */
+html.mobile-scene .hero__tap { display: inline-flex; }    /* show tap button */
 .hero__eyebrow {
   font-family: var(--font-head);
   font-weight: 500;
@@ -312,6 +323,59 @@ html.no-scene .hero__hint { display: none; }
 @keyframes bounceDown {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(8px); }
+}
+
+/* ---- MOBILE tap trigger ----
+   Prominent, pulsing pill centred over the scene so it instantly reads as
+   "tap here". Hidden by default (desktop) and only revealed by main.js on
+   mobile when a live WebGL scene exists. */
+.hero__tap {
+  display: none;                 /* shown only in mobile-scene mode */
+  position: absolute;
+  left: 50%; top: 62%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border-radius: 999px;
+  color: var(--white);
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1;
+  background: rgba(48, 186, 154, 0.20);
+  border: 1.5px solid rgba(111, 214, 189, 0.65);
+  box-shadow: 0 8px 26px rgba(12, 20, 34, 0.35), 0 0 0 0 rgba(48, 186, 154, 0.45);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  text-shadow: 0 1px 10px rgba(12, 20, 34, 0.5);
+  animation: tapPulse 2.1s var(--ease) infinite;
+  transition: opacity .4s var(--ease), transform .4s var(--ease);
+  cursor: pointer;
+}
+.hero__tap-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-300);
+  animation: tapNudge 2.1s var(--ease) infinite;
+}
+.hero__tap-text { white-space: nowrap; }
+.hero__tap.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -40%) scale(0.96);
+}
+/* Soft expanding ring so the pill reads as pressable even at a glance. */
+@keyframes tapPulse {
+  0%   { box-shadow: 0 8px 26px rgba(12,20,34,0.35), 0 0 0 0 rgba(48,186,154,0.45); }
+  70%  { box-shadow: 0 8px 26px rgba(12,20,34,0.35), 0 0 0 16px rgba(48,186,154,0); }
+  100% { box-shadow: 0 8px 26px rgba(12,20,34,0.35), 0 0 0 0 rgba(48,186,154,0); }
+}
+@keyframes tapNudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 /* ============================================================
